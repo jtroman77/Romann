@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f14" />
+<title>Romanx Crash 1000 Direction Scanner</title>
+<style>
+:root{--bg:#0b0f14;--card:#141a22;--line:#26303d;--text:#f5f7fa;--muted:#9ca9b8;--green:#1ec982;--red:#ff566b;--amber:#f0b84d;--blue:#5aa9ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}.wrap{max-width:900px;margin:auto;padding:14px}.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}h1{font-size:21px;margin:0}.sub{font-size:13px;color:var(--muted);margin-top:3px}.pill{padding:7px 10px;border-radius:999px;background:#202733;color:var(--muted);font-size:12px}.pill.ok{background:#173d30;color:#dffcf0}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}.card h2{font-size:16px;margin:0 0 10px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{margin:8px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}input,select{width:100%;background:#0e131a;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px}.secret{display:flex;gap:8px}.secret input{flex:1}.buttons{display:flex;gap:9px;flex-wrap:wrap;margin-top:11px}button{border:0;border-radius:12px;padding:12px 16px;font-weight:850;cursor:pointer;font-size:14px}.primary{background:var(--green);color:#07130d}.secondary{background:#283241;color:#fff}.danger{background:#64242d;color:#ffdce1}.rise{background:var(--green);color:#07130d;flex:1;min-width:120px;font-size:16px}.fall{background:var(--red);color:#1c0508;flex:1;min-width:120px;font-size:16px}.signalbtn{background:var(--blue);color:#061525;flex:1;min-width:150px}button:disabled{opacity:.42;cursor:not-allowed}.notice{border-left:3px solid var(--amber);padding:10px 11px;background:#231f16;border-radius:8px;color:#f4e3bd;font-size:12px}.check{display:flex;gap:8px;align-items:flex-start;color:var(--muted);font-size:13px}.check input{width:auto;margin-top:3px}.stat{background:#0e131a;border:1px solid var(--line);border-radius:12px;padding:12px}.k{color:var(--muted);font-size:11px}.v{font-size:20px;font-weight:850;margin-top:3px}.good{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--amber)}.wide{grid-column:1/-1}.bar{height:9px;background:#202733;border-radius:99px;overflow:hidden;margin-top:8px}.bar>div{height:100%;width:0%;background:var(--blue)}.direction{font-size:28px}.log{height:220px;overflow:auto;background:#090d12;border:1px solid var(--line);border-radius:12px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}.footer{text-align:center;color:var(--muted);font-size:11px;padding:8px 4px 20px}.row{display:flex;gap:9px;align-items:center}.row>*{flex:1}.mini{font-size:12px;color:var(--muted);margin-top:6px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.wrap{padding:11px}.top{flex-direction:column}.direction{font-size:24px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="top"><div><h1>Romanx Crash 1000 Direction Scanner</h1><div class="sub">Scans the current tick direction • manual RISE / FALL trading • no paid AI</div></div><span id="connPill" class="pill">Disconnected</span></div>
+
+<section class="card">
+<h2>1. Connect Deriv</h2>
+<div class="notice">Use DEMO first. Your PAT stays in this browser tab and is never written into this file. The bot checks Crash 1000 and reads the actual Up/Down contract types Deriv exposes for your account before enabling trading.</div>
+<div class="field"><label>Deriv App ID</label><input id="appId" autocomplete="off" placeholder="Paste App ID" /></div>
+<div class="field"><label>Personal Access Token (Trade scope)</label><div class="secret"><input id="pat" type="password" autocomplete="off" placeholder="Paste PAT privately"/><button id="showPat" class="secondary" type="button">Show</button></div></div>
+<div class="buttons"><button id="loadAccounts" class="primary">Load accounts</button><button id="disconnect" class="secondary" disabled>Disconnect</button></div>
+<div class="field"><label>Options account</label><select id="account" disabled><option>Load accounts first</option></select></div>
+<div class="check"><input id="realAck" type="checkbox"/><label for="realAck">Allow real-money account. Leave OFF for testing.</label></div>
+<div class="buttons"><button id="connectTrade" class="secondary" disabled>Connect selected account</button></div>
+</section>
+
+<section class="card">
+<h2>2. Trade settings</h2>
+<div class="grid">
+<div class="field"><label>Stake</label><input id="initialStake" type="number" min="0.01" step="0.01" value="1.00"/></div>
+<div class="field"><label>Duration (ticks)</label><input id="duration" type="number" min="1" max="100" step="1" value="5"/></div>
+<div class="field"><label>Maximum stake guard</label><input id="maxStake" type="number" min="0.01" step="0.01" value="10.00"/></div>
+<div class="field"><label>Minimum signal strength for middle button</label><input id="minStrength" type="number" min="10" max="100" step="5" value="55"/></div>
+<div class="field"><label>Recovery multiplier after loss</label><input id="recovery" type="number" min="1" max="3" step="0.1" value="2.1"/></div>
+<div class="field"><label>Maximum consecutive losses</label><input id="maxLosses" type="number" min="1" max="20" step="1" value="5"/></div>
+</div>
+<div class="check"><input id="useRecovery" type="checkbox"/><label for="useRecovery">Use recovery multiplier after a loss. OFF = every manual trade uses the initial stake.</label></div>
+<div class="buttons"><button id="resetStake" class="secondary">Reset stake</button></div>
+</section>
+
+<section class="card">
+<h2>Live scanner</h2>
+<div class="grid">
+<div class="stat"><div class="k">Market</div><div id="market" class="v">Crash 1000</div></div>
+<div class="stat"><div class="k">Latest price</div><div id="spot" class="v">—</div></div>
+<div class="stat"><div class="k">Current direction</div><div id="direction" class="v direction">WARMING UP</div></div>
+<div class="stat"><div class="k">Signal strength</div><div id="strength" class="v">0 / 100</div><div class="bar"><div id="strengthBar"></div></div></div>
+<div class="stat"><div class="k">Short momentum</div><div id="shortMom" class="v" style="font-size:16px">—</div></div>
+<div class="stat"><div class="k">Long trend</div><div id="longTrend" class="v" style="font-size:16px">—</div></div>
+<div class="stat"><div class="k">Crash shock state</div><div id="shock" class="v" style="font-size:16px">—</div></div>
+<div class="stat"><div class="k">Up / down contract map</div><div id="contractMap" class="v" style="font-size:14px">Checking…</div></div>
+<div class="stat"><div class="k">Balance</div><div id="balance" class="v">—</div></div>
+<div class="stat"><div class="k">Current stake</div><div id="currentStake" class="v">$1.00</div></div>
+<div class="stat"><div class="k">Session P/L</div><div id="sessionPL" class="v">$0.00</div></div>
+<div class="stat"><div class="k">Wins / losses</div><div id="wl" class="v">0 / 0</div></div>
+<div class="stat wide"><div class="k">Contract status</div><div id="contractStatus" class="v" style="font-size:15px">Not connected</div></div>
+</div>
+<div class="mini">The scanner measures recent direction only; it cannot know when the next Crash 1000 spike will occur.</div>
+</section>
+
+<section class="card">
+<h2>Manual trade</h2>
+<div class="notice">RISE and FALL buttons trade immediately in the direction you choose. The middle button follows the scanner only when its strength is above your minimum. No trade is placed automatically.</div>
+<div class="buttons">
+<button id="riseBtn" class="rise" disabled>▲ RISE</button>
+<button id="signalBtn" class="signalbtn" disabled>TRADE SIGNAL</button>
+<button id="fallBtn" class="fall" disabled>▼ FALL</button>
+</div>
+</section>
+
+<section class="card"><h2>Activity log</h2><div id="log" class="log"></div></section>
+<div class="footer">Crash 1000 has a long-run tendency for sudden downward spikes with drift between them, but individual ticks and spike timing are not predictable. Test on demo before real money.</div>
+</main>
+
+<script>
+(() => {
+'use strict';
+const API_BASE='https://api.derivws.com';
+const $=id=>document.getElementById(id);
+const S={accounts:[],ws:null,selected:null,accountType:'demo',currency:'USD',symbol:null,upType:null,downType:null,reqId:100,prices:[],tickCount:0,inTrade:false,pending:null,currentContractId:null,lastSettled:null,initialStake:1,stake:1,sessionPL:0,wins:0,losses:0,lossStreak:0,signal:{direction:'NEUTRAL',strength:0,score:0}};
+function log(msg,level='info'){const ts=new Date().toLocaleTimeString();const mark=level==='error'?'✖':level==='ok'?'✔':level==='warn'?'!':'•';$('log').textContent+=`[${ts}] ${mark} ${msg}\n`;$('log').scrollTop=$('log').scrollHeight}
+function money(n){return `$${Number(n||0).toFixed(2)}`}function nextReq(){return ++S.reqId}function setConn(t,ok=false){$('connPill').textContent=t;$('connPill').className=ok?'pill ok':'pill'}
+function credentials(){const appId=$('appId').value.trim(),pat=$('pat').value.trim();if(!appId||!pat)throw new Error('Enter App ID and PAT first.');return{appId,pat}}
+async function derivFetch(path,opt={}){const {appId,pat}=credentials();const res=await fetch(`${API_BASE}${path}`,{...opt,headers:{Authorization:`Bearer ${pat}`,'Deriv-App-ID':appId,'Content-Type':'application/json',...(opt.headers||{})}});const data=await res.json().catch(()=>({}));if(!res.ok||data.errors)throw new Error(data.errors?.map(e=>e.message||e.code).join('; ')||`HTTP ${res.status}`);return data}
+function updateStats(){$('sessionPL').textContent=money(S.sessionPL);$('sessionPL').className=`v ${S.sessionPL>0?'good':S.sessionPL<0?'bad':''}`;$('currentStake').textContent=money(S.stake);$('wl').textContent=`${S.wins} / ${S.losses}`}
+function setTradeButtons(){const ready=!!(S.ws&&S.ws.readyState===WebSocket.OPEN&&S.symbol&&S.upType&&S.downType&&!S.inTrade&&!S.pending);$('riseBtn').disabled=!ready;$('fallBtn').disabled=!ready;const min=Math.max(10,Number($('minStrength').value||55));$('signalBtn').disabled=!ready||S.signal.direction==='NEUTRAL'||S.signal.strength<min;$('signalBtn').textContent=S.signal.direction==='NEUTRAL'?'TRADE SIGNAL':`TRADE ${S.signal.direction} ${S.signal.strength}%`}
+async function loadAccounts(){try{$('loadAccounts').disabled=true;log('Loading Deriv Options accounts…');const r=await derivFetch('/trading/v1/options/accounts',{method:'GET'});const arr=Array.isArray(r.data)?r.data:(r.data?[r.data]:[]);if(!arr.length)throw new Error('No Options accounts returned.');S.accounts=arr;const sel=$('account');sel.innerHTML='';arr.forEach(a=>{const o=document.createElement('option');o.value=a.account_id;o.textContent=`${a.account_id} — ${String(a.account_type||'').toUpperCase()} — ${a.currency||'USD'} ${Number(a.balance||0).toFixed(2)}`;sel.appendChild(o)});const di=arr.findIndex(a=>a.account_type==='demo');if(di>=0)sel.selectedIndex=di;sel.disabled=false;$('connectTrade').disabled=false;log(`Loaded ${arr.length} account(s).`,'ok')}catch(e){log(e.message,'error');alert(e.message)}finally{$('loadAccounts').disabled=false}}
+async function connectSelected(){try{const id=$('account').value;const a=S.accounts.find(x=>x.account_id===id);if(!a)throw new Error('Select an account first.');if(a.account_type==='real'&&!$('realAck').checked)throw new Error('Real account blocked. Turn on the real-account checkbox only if you intentionally want real trades.');closeWs();Object.assign(S,{selected:a,currency:a.currency||'USD',accountType:a.account_type||'demo',symbol:null,upType:null,downType:null,prices:[],tickCount:0,inTrade:false,pending:null,currentContractId:null,lastSettled:null});S.initialStake=Math.max(.01,Number($('initialStake').value||1));S.stake=S.initialStake;updateStats();const r=await derivFetch(`/trading/v1/options/accounts/${encodeURIComponent(id)}/otp`,{method:'POST'});const d=r.data||{};const url=d.url||d.websocket_url||d.websocketUrl||d.ws_url;if(!url)throw new Error('No WebSocket URL returned by Deriv.');await openWs(url);setConn(`${S.accountType.toUpperCase()} connected`,true);$('disconnect').disabled=false;$('connectTrade').disabled=true;$('contractStatus').textContent='Discovering Crash 1000…';wsSend({balance:1,subscribe:1,req_id:nextReq()});wsSend({active_symbols:'brief',req_id:nextReq()});log('Connected. Discovering Crash 1000 and its actual Rise/Fall contracts…','ok')}catch(e){log(e.message,'error');alert(e.message)}}
+function openWs(url){return new Promise((resolve,reject)=>{const ws=new WebSocket(url);S.ws=ws;const timer=setTimeout(()=>reject(new Error('WebSocket timeout.')),12000);ws.onopen=()=>{clearTimeout(timer);ws.onmessage=onMessage;ws.onclose=onClose;resolve()};ws.onerror=()=>{clearTimeout(timer);reject(new Error('Could not connect to Deriv WebSocket.'))}})}
+function closeWs(){if(S.ws){try{S.ws.close()}catch(_){}S.ws=null}setTradeButtons()}function wsSend(o){if(!S.ws||S.ws.readyState!==WebSocket.OPEN)throw new Error('WebSocket not connected.');S.ws.send(JSON.stringify(o))}
+function onClose(){setConn('Disconnected');S.ws=null;S.inTrade=false;S.pending=null;$('connectTrade').disabled=!S.accounts.length;$('disconnect').disabled=true;$('contractStatus').textContent='Disconnected';setTradeButtons();log('Disconnected.','warn')}
+function symName(x){return String(x.underlying_symbol_name||x.display_name||x.name||'')}function symCode(x){return x.underlying_symbol||x.symbol||x.code}
+function onMessage(ev){let m;try{m=JSON.parse(ev.data)}catch{return}if(m.error){const msg=`${m.error.code||'API'}: ${m.error.message||'Unknown error'}`;log(msg,'error');if(S.pending){S.pending=null;S.inTrade=false;$('contractStatus').textContent=msg;setTradeButtons()}return}
+if(m.msg_type==='balance'&&m.balance){const b=m.balance.balance??m.balance;$('balance').textContent=`${S.currency} ${Number(b).toFixed(2)}`}
+if(m.msg_type==='active_symbols'&&Array.isArray(m.active_symbols)){const c=m.active_symbols.find(x=>/crash\s*1000\s*index/i.test(symName(x)))||m.active_symbols.find(x=>/crash.*1000/i.test(symName(x)));if(!c){$('contractStatus').textContent='Crash 1000 unavailable';log('Crash 1000 Index was not returned by active_symbols.','error');return}S.symbol=symCode(c);$('market').textContent=`${symName(c)||'Crash 1000'} (${S.symbol})`;wsSend({contracts_for:S.symbol,req_id:nextReq()});wsSend({ticks_history:S.symbol,count:100,end:'latest',style:'ticks',req_id:nextReq()});wsSend({ticks:S.symbol,subscribe:1,req_id:nextReq()});log(`Crash 1000 discovered: ${S.symbol}.`,'ok')}
+if(m.msg_type==='contracts_for'&&m.contracts_for){mapContracts(m.contracts_for.available||[])}
+if(m.msg_type==='history'&&m.history){const p=(m.history.prices||[]).map(Number).filter(Number.isFinite);if(p.length){S.prices=p.slice(-120);S.tickCount+=p.length;computeSignal();log(`Scanner warmed with ${p.length} historical ticks.`,'ok')}}
+if(m.msg_type==='tick'&&m.tick){onTick(Number(m.tick.quote))}
+if(m.msg_type==='proposal'&&m.proposal){handleProposal(m.proposal)}
+if(m.msg_type==='buy'&&m.buy){handleBuy(m.buy)}
+if(m.msg_type==='proposal_open_contract'&&m.proposal_open_contract){handleContract(m.proposal_open_contract)}}
+function mapContracts(list){const cp=list.filter(c=>String(c.contract_category||'').toLowerCase()==='callput'||['CALL','PUT','CALLE','PUTE'].includes(String(c.contract_type||'')));const up=cp.find(c=>String(c.sentiment||'').toLowerCase()==='up')||cp.find(c=>String(c.contract_type||'').toUpperCase()==='CALL');const down=cp.find(c=>String(c.sentiment||'').toLowerCase()==='down')||cp.find(c=>String(c.contract_type||'').toUpperCase()==='PUT');S.upType=up?.contract_type||null;S.downType=down?.contract_type||null;if(S.upType&&S.downType){$('contractMap').textContent=`RISE=${S.upType} • FALL=${S.downType}`;$('contractStatus').textContent='Ready for manual Rise/Fall';log(`Deriv contract map confirmed: RISE=${S.upType}, FALL=${S.downType}.`,'ok')}else{$('contractMap').textContent='Rise/Fall not available';$('contractStatus').textContent='Rise/Fall unavailable for Crash 1000';log('Deriv did not expose both Up/Down contracts for this Crash 1000 symbol/account.','error')}setTradeButtons()}
+function median(a){if(!a.length)return 0;const b=[...a].sort((x,y)=>x-y),n=b.length;return n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2}function ema(arr,p){if(!arr.length)return 0;const k=2/(p+1);let e=arr[0];for(let i=1;i<arr.length;i++)e=arr[i]*k+e*(1-k);return e}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function computeSignal(){const p=S.prices;if(p.length<30){S.signal={direction:'NEUTRAL',strength:0,score:0};$('direction').textContent=`WARMING ${p.length}/30`;$('strength').textContent='0 / 100';$('strengthBar').style.width='0%';setTradeButtons();return}const d=[];for(let i=1;i<p.length;i++)d.push(p[i]-p[i-1]);const recent=d.slice(-40),med=median(recent.map(Math.abs))||1e-9;const norm=x=>x/med;const last=p[p.length-1];const m3=norm(last-p[p.length-4]);const m7=norm(last-p[p.length-8]);const m15=norm(last-p[p.length-16]);const e6=ema(p.slice(-50),6),e18=ema(p.slice(-70),18);const eDiff=norm(e6-e18);const last12=d.slice(-12);const upRatio=last12.filter(x=>x>0).length/Math.max(1,last12.length);const ratioScore=(upRatio-.5)*8;const slope30=norm(last-p[p.length-30]);let raw=(m3*0.20)+(m7*0.22)+(m15*0.18)+(eDiff*0.24)+(ratioScore*0.10)+(slope30*0.06);raw=clamp(raw,-6,6);let score=(raw/6)*100;const shockThreshold=med*6;let recentShock=-1;for(let i=d.length-1;i>=Math.max(0,d.length-12);i--){if(d[i]<-shockThreshold){recentShock=d.length-1-i;break}}if(recentShock>=0&&recentShock<=3){score*=0.55;$('shock').textContent=`Recent crash ${recentShock} tick(s) ago`;$('shock').className='v warn'}else if(recentShock>=0){$('shock').textContent=`Crash ${recentShock} ticks ago`;$('shock').className='v'}else{$('shock').textContent='No large recent crash';$('shock').className='v'}const abs=Math.round(clamp(Math.abs(score),0,100));let dir='NEUTRAL';if(score>=20)dir='RISE';else if(score<=-20)dir='FALL';S.signal={direction:dir,strength:abs,score};$('direction').textContent=dir;$('direction').className=`v direction ${dir==='RISE'?'good':dir==='FALL'?'bad':'warn'}`;$('strength').textContent=`${abs} / 100`;$('strengthBar').style.width=`${abs}%`;$('shortMom').textContent=m3>0?'UP':m3<0?'DOWN':'FLAT';$('shortMom').className=`v ${m3>0?'good':m3<0?'bad':''}`;$('longTrend').textContent=(eDiff+slope30)>0?'UPWARD':(eDiff+slope30)<0?'DOWNWARD':'FLAT';$('longTrend').className=`v ${(eDiff+slope30)>0?'good':(eDiff+slope30)<0?'bad':''}`;setTradeButtons()}
+function onTick(q){if(!Number.isFinite(q))return;$('spot').textContent=String(q);S.tickCount++;S.prices.push(q);if(S.prices.length>140)S.prices.shift();computeSignal()}
+function manualTrade(direction){try{if(S.inTrade||S.pending)return;const type=direction==='RISE'?S.upType:S.downType;if(!type)throw new Error(`${direction} contract is not available.`);if(S.accountType==='real'&&!$('realAck').checked)throw new Error('Real account blocked.');const maxStake=Math.max(.01,Number($('maxStake').value||10));if(S.stake>maxStake)throw new Error(`Current stake ${money(S.stake)} is above the max-stake guard ${money(maxStake)}.`);const dur=Math.max(1,parseInt($('duration').value||'5',10));S.pending={direction,type};$('contractStatus').textContent=`Requesting ${direction} proposal…`;setTradeButtons();log(`${direction} pressed. Requesting ${dur}-tick proposal at ${money(S.stake)}.`);wsSend({proposal:1,amount:Number(S.stake.toFixed(2)),basis:'stake',contract_type:type,currency:S.currency,duration:dur,duration_unit:'t',underlying_symbol:S.symbol,req_id:nextReq()})}catch(e){S.pending=null;log(e.message,'error');alert(e.message);setTradeButtons()}}
+function handleProposal(p){if(!S.pending||S.inTrade)return;const pending=S.pending;const ask=Number(p.ask_price??S.stake);if(!p.id||!Number.isFinite(ask)){S.pending=null;setTradeButtons();return log('Invalid proposal from Deriv.','error')}S.inTrade=true;$('contractStatus').textContent=`Buying ${pending.direction}…`;log(`Buying ${pending.direction} at proposal price ${money(ask)}.`);wsSend({buy:String(p.id),price:ask,req_id:nextReq()})}
+function handleBuy(b){if(!S.pending)return;S.currentContractId=Number(b.contract_id);S.lastSettled=null;const dir=S.pending.direction;S.pending=null;$('contractStatus').textContent=`${dir} contract ${S.currentContractId} OPEN`;log(`${dir} contract ${S.currentContractId} opened.`,'ok');setTradeButtons();wsSend({proposal_open_contract:1,contract_id:S.currentContractId,subscribe:1,req_id:nextReq()})}
+function handleContract(c){if(Number(c.contract_id)!==Number(S.currentContractId))return;const profit=Number(c.profit??0);const status=String(c.status||'open').toUpperCase();$('contractStatus').textContent=`${status} • P/L ${money(profit)}`;const closed=c.is_sold===1||['SOLD','WON','LOST','CANCELLED'].includes(status);if(closed)settle(c)}
+function settle(c){const id=Number(c.contract_id);if(S.lastSettled===id)return;S.lastSettled=id;const profit=Number(c.profit??0);S.sessionPL=Number((S.sessionPL+profit).toFixed(2));if(profit>0){S.wins++;S.lossStreak=0;S.stake=S.initialStake;log(`WIN ${money(profit)}. Stake reset to ${money(S.stake)}.`,'ok')}else if(profit<0){S.losses++;S.lossStreak++;if($('useRecovery').checked){const mult=Math.max(1,Number($('recovery').value||1));S.stake=Number((S.stake*mult).toFixed(2));log(`LOSS ${money(profit)}. Recovery stake -> ${money(S.stake)}.`,'warn')}else{S.stake=S.initialStake;log(`LOSS ${money(profit)}. Stake reset.`,'warn')}}S.inTrade=false;S.currentContractId=null;updateStats();const maxLoss=Math.max(1,parseInt($('maxLosses').value||'5',10)),maxStake=Math.max(.01,Number($('maxStake').value||10));if(S.lossStreak>=maxLoss){$('contractStatus').textContent=`Loss guard: ${S.lossStreak} consecutive losses`;log('Loss guard reached. Reset stake before continuing.','warn');S.stake=S.initialStake;S.lossStreak=0}if(S.stake>maxStake){$('contractStatus').textContent='Max-stake guard triggered';log(`Recovery stake exceeded ${money(maxStake)}; resetting to initial stake.`,'warn');S.stake=S.initialStake}updateStats();setTradeButtons()}
+function resetStake(){S.initialStake=Math.max(.01,Number($('initialStake').value||1));S.stake=S.initialStake;S.lossStreak=0;updateStats();log(`Stake reset to ${money(S.stake)}.`,'ok');setTradeButtons()}
+$('loadAccounts').addEventListener('click',loadAccounts);$('connectTrade').addEventListener('click',connectSelected);$('disconnect').addEventListener('click',()=>{closeWs()});$('showPat').addEventListener('click',()=>{const p=$('pat');p.type=p.type==='password'?'text':'password';$('showPat').textContent=p.type==='password'?'Show':'Hide'});$('riseBtn').addEventListener('click',()=>manualTrade('RISE'));$('fallBtn').addEventListener('click',()=>manualTrade('FALL'));$('signalBtn').addEventListener('click',()=>{const min=Math.max(10,Number($('minStrength').value||55));if(S.signal.direction==='NEUTRAL'||S.signal.strength<min)return;manualTrade(S.signal.direction)});$('resetStake').addEventListener('click',resetStake);$('minStrength').addEventListener('input',setTradeButtons);$('initialStake').addEventListener('change',()=>{if(!S.inTrade)resetStake()});window.addEventListener('beforeunload',closeWs);updateStats();log('Ready. Load accounts, select DEMO, connect, then use RISE/FALL manually.');
+})();
+</script>
+</body>
+</html>
