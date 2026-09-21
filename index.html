@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f14" />
+  <title>Romanx Deriv Bot</title>
+  <style>
+    :root{--bg:#0b0f14;--card:#141a22;--line:#26303d;--text:#f5f7fa;--muted:#9ca9b8;--accent:#ff475d;--ok:#23c483;--warn:#f3b341;--bad:#ff5c6d}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:860px;margin:auto;padding:18px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{font-size:22px;margin:0}.pill{padding:7px 10px;border-radius:999px;background:#202733;color:var(--muted);font-size:12px}.pill.ok{color:#dffcf0;background:#173d30}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px}
+    .card h2{font-size:16px;margin:0 0 12px}.field{margin:10px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+    input,select{width:100%;background:#0e131a;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px}
+    input:focus,select:focus{outline:2px solid #39495c}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.buttons{display:flex;gap:10px;flex-wrap:wrap}
+    button{border:0;border-radius:11px;padding:12px 16px;font-weight:700;cursor:pointer}.primary{background:var(--accent);color:white}.secondary{background:#283241;color:white}.danger{background:#64242d;color:#ffdce1}
+    button:disabled{opacity:.45;cursor:not-allowed}.stat{background:#0e131a;border:1px solid var(--line);border-radius:12px;padding:12px}.stat .k{color:var(--muted);font-size:11px}.stat .v{font-size:20px;font-weight:800;margin-top:4px}
+    .log{height:240px;overflow:auto;background:#090d12;border:1px solid var(--line);border-radius:12px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+    .notice{border-left:3px solid var(--warn);padding:10px 12px;background:#231f16;border-radius:8px;color:#f4e3bd;font-size:13px}.good{color:var(--ok)}.bad{color:var(--bad)}
+    .check{display:flex;gap:9px;align-items:flex-start;color:var(--muted);font-size:13px}.check input{width:auto;margin-top:3px}.secret{display:flex;gap:8px}.secret input{flex:1}.secret button{padding:10px 12px}
+    .footer{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 24px}.wide{grid-column:1/-1}
+    @media(max-width:640px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.wrap{padding:12px}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top">
+      <div><h1>Romanx Deriv Bot</h1><div style="color:var(--muted);font-size:13px">Accumulator • 20-tick exit • configurable recovery</div></div>
+      <span id="connPill" class="pill">Disconnected</span>
+    </div>
+
+    <section class="card">
+      <h2>1. Connect Deriv</h2>
+      <div class="notice">Your PAT is kept only in this browser tab's memory. It is not saved to localStorage and is sent only to Deriv's API to obtain an authenticated WebSocket URL.</div>
+      <div class="field"><label>Deriv App ID</label><input id="appId" autocomplete="off" placeholder="Paste your Romanx App ID" /></div>
+      <div class="field"><label>Personal Access Token (Trade scope)</label><div class="secret"><input id="pat" type="password" autocomplete="off" placeholder="Paste PAT privately" /><button id="showPat" class="secondary" type="button">Show</button></div></div>
+      <div class="buttons"><button id="loadAccounts" class="primary">Load accounts</button><button id="disconnect" class="secondary" disabled>Disconnect</button></div>
+      <div class="field"><label>Options account</label><select id="account" disabled><option>Load accounts first</option></select></div>
+      <div class="check"><input id="realAck" type="checkbox"/><label for="realAck">Allow a real-money account. Leave this OFF while testing. Real trading can lose money quickly.</label></div>
+    </section>
+
+    <section class="card">
+      <h2>2. Strategy</h2>
+      <div class="grid">
+        <div class="field"><label>Symbol</label><input id="symbol" value="1HZ100V" placeholder="e.g. 1HZ100V" /></div>
+        <div class="field"><label>Growth rate</label><select id="growth"><option value="0.01">1%</option><option value="0.02">2%</option><option value="0.03">3%</option><option value="0.04">4%</option><option value="0.05" selected>5%</option></select></div>
+        <div class="field"><label>Initial stake (USD)</label><input id="initialStake" type="number" min="0.01" step="0.01" value="1.00" /></div>
+        <div class="field"><label>Recovery multiplier after loss</label><input id="recovery" type="number" min="1" step="0.1" value="2.1" /></div>
+        <div class="field"><label>Close after ticks</label><input id="maxTicks" type="number" min="1" max="500" step="1" value="20" /></div>
+        <div class="field"><label>Session profit target (USD)</label><input id="profitTarget" type="number" min="0.01" step="0.01" value="10.00" /></div>
+        <div class="field"><label>Maximum stake guard (USD)</label><input id="maxStake" type="number" min="0.01" step="0.01" value="100.00" /></div>
+        <div class="field"><label>Maximum consecutive losses</label><input id="maxLosses" type="number" min="1" max="50" step="1" value="5" /></div>
+      </div>
+      <div class="check" style="margin-top:8px"><input id="autoRepeat" type="checkbox" checked/><label for="autoRepeat">Automatically open the next accumulator after the previous contract settles, until the target/guard stops the session.</label></div>
+      <div class="buttons" style="margin-top:12px"><button id="connectTrade" class="secondary" disabled>Connect selected account</button><button id="start" class="primary" disabled>Start bot</button><button id="stop" class="danger" disabled>Stop after current trade</button></div>
+    </section>
+
+    <section class="card">
+      <h2>Live session</h2>
+      <div class="grid">
+        <div class="stat"><div class="k">Balance</div><div id="balance" class="v">—</div></div>
+        <div class="stat"><div class="k">Session P/L</div><div id="sessionPL" class="v">$0.00</div></div>
+        <div class="stat"><div class="k">Current stake</div><div id="currentStake" class="v">$0.00</div></div>
+        <div class="stat"><div class="k">Ticks in contract</div><div id="tickCount" class="v">0 / 20</div></div>
+        <div class="stat"><div class="k">Wins / losses</div><div id="wl" class="v">0 / 0</div></div>
+        <div class="stat"><div class="k">Latest price</div><div id="spot" class="v">—</div></div>
+        <div class="stat wide"><div class="k">Contract status</div><div id="contractStatus" class="v" style="font-size:15px">Idle</div></div>
+      </div>
+    </section>
+
+    <section class="card"><h2>Activity log</h2><div id="log" class="log"></div></section>
+    <div class="footer">Demo-first build. No OpenAI API or paid AI service is required.</div>
+  </main>
+  <script>
+(() => {
+  'use strict';
+  const API_BASE = 'https://api.derivws.com';
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    accounts: [], ws: null, selected: null, running: false, stopRequested: false,
+    inTrade: false, selling: false, currentContractId: null, proposalReqId: null,
+    initialStake: 0, stake: 0, sessionPL: 0, wins: 0, losses: 0, lossStreak: 0,
+    lastSettledContract: null, reqId: 10, tickSubId: null, balanceSubId: null,
+    contractSubId: null, currency: 'USD', accountType: 'demo'
+  };
+
+  function log(msg, level='info') {
+    const ts = new Date().toLocaleTimeString();
+    const mark = level === 'error' ? '✖' : level === 'ok' ? '✔' : level === 'warn' ? '!' : '•';
+    $('log').textContent += `[${ts}] ${mark} ${msg}\n`;
+    $('log').scrollTop = $('log').scrollHeight;
+  }
+
+  function money(n) { return `$${Number(n || 0).toFixed(2)}`; }
+  function nextReq() { return ++state.reqId; }
+  function setConn(text, ok=false) { $('connPill').textContent = text; $('connPill').className = ok ? 'pill ok' : 'pill'; }
+  function updateStats() {
+    $('sessionPL').textContent = money(state.sessionPL);
+    $('sessionPL').className = `v ${state.sessionPL > 0 ? 'good' : state.sessionPL < 0 ? 'bad' : ''}`;
+    $('currentStake').textContent = money(state.stake);
+    $('wl').textContent = `${state.wins} / ${state.losses}`;
+    $('tickCount').textContent = `${Number($('tickCount').dataset.count || 0)} / ${parseInt($('maxTicks').value || '20',10)}`;
+  }
+
+  function credentials() {
+    const appId = $('appId').value.trim();
+    const pat = $('pat').value.trim();
+    if (!appId || !pat) throw new Error('Enter your Deriv App ID and PAT first.');
+    return { appId, pat };
+  }
+
+  async function derivFetch(path, options={}) {
+    const {appId, pat} = credentials();
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Deriv-App-ID': appId,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.errors) {
+      const err = data.errors?.map(e => e.message || e.code).join('; ') || `HTTP ${res.status}`;
+      throw new Error(err);
+    }
+    return data;
+  }
+
+  async function loadAccounts() {
+    try {
+      $('loadAccounts').disabled = true;
+      log('Loading Deriv Options accounts…');
+      const r = await derivFetch('/trading/v1/options/accounts', {method:'GET'});
+      const arr = Array.isArray(r.data) ? r.data : (r.data ? [r.data] : []);
+      state.accounts = arr;
+      if (!arr.length) throw new Error('No Options accounts returned by Deriv.');
+      const sel = $('account'); sel.innerHTML = '';
+      arr.forEach(a => {
+        const o = document.createElement('option');
+        o.value = a.account_id;
+        o.dataset.type = a.account_type;
+        o.dataset.currency = a.currency || 'USD';
+        o.textContent = `${a.account_id} — ${String(a.account_type || '').toUpperCase()} — ${a.currency || 'USD'} ${Number(a.balance || 0).toFixed(2)}`;
+        sel.appendChild(o);
+      });
+      // Prefer demo automatically.
+      const demoIndex = arr.findIndex(a => a.account_type === 'demo');
+      if (demoIndex >= 0) sel.selectedIndex = demoIndex;
+      sel.disabled = false; $('connectTrade').disabled = false;
+      log(`Loaded ${arr.length} account(s). Demo selected when available.`, 'ok');
+    } catch(e) { log(e.message, 'error'); alert(e.message); }
+    finally { $('loadAccounts').disabled = false; }
+  }
+
+  async function connectSelected() {
+    try {
+      const id = $('account').value;
+      const a = state.accounts.find(x => x.account_id === id);
+      if (!a) throw new Error('Select an account first.');
+      if (a.account_type === 'real' && !$('realAck').checked) throw new Error('Real account blocked. Tick “Allow a real-money account” only if you intentionally want real trading.');
+      if (state.ws) closeWs();
+      state.selected = a; state.currency = a.currency || 'USD'; state.accountType = a.account_type || 'demo';
+      log(`Requesting a one-time WebSocket URL for ${id} (${state.accountType})…`);
+      const r = await derivFetch(`/trading/v1/options/accounts/${encodeURIComponent(id)}/otp`, {method:'POST'});
+      const d = r.data || {};
+      const url = d.websocket_url || d.websocketUrl || d.url || d.ws_url;
+      if (!url) throw new Error('Deriv did not return a WebSocket URL.');
+      await openWs(url);
+      setConn(`${state.accountType.toUpperCase()} connected`, true);
+      $('disconnect').disabled = false; $('start').disabled = false; $('connectTrade').disabled = true;
+      wsSend({balance:1, subscribe:1, req_id: nextReq()});
+      wsSend({ticks:$('symbol').value.trim(), subscribe:1, req_id: nextReq()});
+      log('Authenticated trading WebSocket connected.', 'ok');
+    } catch(e) { log(e.message, 'error'); alert(e.message); }
+  }
+
+  function openWs(url) {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(url); state.ws = ws;
+      const timer = setTimeout(() => reject(new Error('WebSocket connection timed out.')), 12000);
+      ws.onopen = () => { clearTimeout(timer); ws.onmessage = onMessage; ws.onerror = onWsError; ws.onclose = onWsClose; resolve(); };
+      ws.onerror = () => { clearTimeout(timer); reject(new Error('Could not connect to Deriv WebSocket.')); };
+    });
+  }
+
+  function onWsError() { log('WebSocket error.', 'error'); }
+  function onWsClose() {
+    setConn('Disconnected'); state.ws = null; state.running = false; state.inTrade = false; state.selling = false;
+    $('start').disabled = true; $('stop').disabled = true; $('connectTrade').disabled = !state.accounts.length; $('disconnect').disabled = true;
+    $('contractStatus').textContent = 'Disconnected';
+    log('WebSocket disconnected.', 'warn');
+  }
+  function closeWs() { if (state.ws) { try { state.ws.close(); } catch(_){} state.ws = null; } }
+  function wsSend(obj) {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) throw new Error('WebSocket is not connected.');
+    state.ws.send(JSON.stringify(obj));
+  }
+
+  function onMessage(ev) {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.error) { log(`${m.error.code || 'API'}: ${m.error.message || 'Unknown Deriv error'}`, 'error'); if (state.running && !state.inTrade) stopSession('API error'); return; }
+
+    if (m.msg_type === 'balance' && m.balance) {
+      const b = m.balance.balance ?? m.balance;
+      $('balance').textContent = `${state.currency} ${Number(b).toFixed(2)}`;
+      if (m.subscription?.id) state.balanceSubId = m.subscription.id;
+    }
+    if (m.msg_type === 'tick' && m.tick) {
+      $('spot').textContent = String(m.tick.quote ?? '—');
+      if (m.subscription?.id) state.tickSubId = m.subscription.id;
+    }
+    if (m.msg_type === 'proposal' && m.proposal) {
+      if (!state.running || state.inTrade) return;
+      const p = m.proposal;
+      const ask = Number(p.ask_price ?? state.stake);
+      if (!p.id || !Number.isFinite(ask)) { stopSession('Invalid proposal'); return; }
+      state.inTrade = true;
+      $('contractStatus').textContent = `Buying ${money(state.stake)} accumulator…`;
+      log(`Proposal ready. Buying at ${money(ask)}…`);
+      wsSend({buy:String(p.id), price:ask, req_id:nextReq()});
+    }
+    if (m.msg_type === 'buy' && m.buy) {
+      state.currentContractId = Number(m.buy.contract_id);
+      state.lastSettledContract = null; state.selling = false;
+      $('tickCount').dataset.count = '0'; updateStats();
+      $('contractStatus').textContent = `Contract ${state.currentContractId} open`;
+      log(`Bought contract ${state.currentContractId}.`, 'ok');
+      wsSend({proposal_open_contract:1, contract_id:state.currentContractId, subscribe:1, req_id:nextReq()});
+    }
+    if (m.msg_type === 'proposal_open_contract' && m.proposal_open_contract) handleContract(m.proposal_open_contract, m.subscription?.id);
+    if (m.msg_type === 'sell' && m.sell) log(`20-tick exit submitted at market.`, 'ok');
+  }
+
+  function handleContract(c, subId) {
+    if (subId) state.contractSubId = subId;
+    if (Number(c.contract_id) !== Number(state.currentContractId)) return;
+    const passed = Number(c.tick_passed ?? 0);
+    $('tickCount').dataset.count = String(passed); updateStats();
+    const liveProfit = Number(c.profit ?? 0);
+    $('contractStatus').textContent = `${String(c.status || 'open').toUpperCase()} • P/L ${money(liveProfit)} • ${passed} ticks`;
+
+    const maxTicks = Math.max(1, parseInt($('maxTicks').value || '20',10));
+    const isClosed = c.is_sold === 1 || ['sold','won','lost','cancelled'].includes(c.status);
+
+    if (!isClosed && passed >= maxTicks && c.is_valid_to_sell === 1 && !state.selling) {
+      state.selling = true;
+      log(`${passed} ticks reached — selling at market.`);
+      wsSend({sell:Number(c.contract_id), price:0, req_id:nextReq()});
+      return;
+    }
+    if (isClosed) settle(c);
+  }
+
+  function settle(c) {
+    const id = Number(c.contract_id);
+    if (state.lastSettledContract === id) return;
+    state.lastSettledContract = id;
+    const profit = Number(c.profit ?? 0);
+    state.sessionPL = Number((state.sessionPL + profit).toFixed(2));
+    if (profit > 0) {
+      state.wins++; state.lossStreak = 0; state.stake = state.initialStake;
+      log(`Contract closed WIN ${money(profit)}. Stake reset to ${money(state.stake)}.`, 'ok');
+    } else if (profit < 0) {
+      state.losses++; state.lossStreak++;
+      const mult = Math.max(1, Number($('recovery').value || 2.1));
+      state.stake = Number((state.stake * mult).toFixed(2));
+      log(`Contract closed LOSS ${money(profit)}. Next stake ×${mult} = ${money(state.stake)}.`, 'warn');
+    } else {
+      log('Contract closed flat. Stake unchanged.');
+    }
+    state.inTrade = false; state.selling = false; state.currentContractId = null;
+    $('tickCount').dataset.count = '0'; updateStats();
+
+    const target = Number($('profitTarget').value || 10);
+    const maxStake = Number($('maxStake').value || 100);
+    const maxLosses = Math.max(1, parseInt($('maxLosses').value || '5',10));
+    if (state.sessionPL >= target) return stopSession(`Profit target reached: ${money(state.sessionPL)}`);
+    if (state.stake > maxStake) return stopSession(`Maximum stake guard reached (${money(state.stake)} > ${money(maxStake)})`);
+    if (state.lossStreak >= maxLosses) return stopSession(`Maximum consecutive losses reached (${state.lossStreak})`);
+    if (state.stopRequested || !$('autoRepeat').checked) return stopSession('Session stopped after settlement.');
+    setTimeout(requestProposal, 700);
+  }
+
+  function requestProposal() {
+    if (!state.running || state.inTrade) return;
+    const symbol = $('symbol').value.trim();
+    const growth = Number($('growth').value);
+    if (!symbol) return stopSession('Symbol is empty.');
+    $('contractStatus').textContent = 'Requesting accumulator proposal…';
+    log(`Requesting ACCU proposal: ${symbol}, stake ${money(state.stake)}, growth ${(growth*100).toFixed(0)}%.`);
+    wsSend({proposal:1, amount:state.stake, basis:'stake', contract_type:'ACCU', currency:state.currency, growth_rate:growth, underlying_symbol:symbol, req_id:nextReq()});
+  }
+
+  function startSession() {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return alert('Connect an account first.');
+    if (state.accountType === 'real' && !$('realAck').checked) return alert('Real account is blocked.');
+    const initial = Number($('initialStake').value);
+    if (!Number.isFinite(initial) || initial <= 0) return alert('Enter a valid initial stake.');
+    state.initialStake = initial; state.stake = initial; state.sessionPL = 0; state.wins = 0; state.losses = 0; state.lossStreak = 0;
+    state.running = true; state.stopRequested = false; state.inTrade = false; state.selling = false; state.lastSettledContract = null;
+    $('start').disabled = true; $('stop').disabled = false; $('connectTrade').disabled = true;
+    updateStats(); log(`Session started on ${state.accountType.toUpperCase()}. Target ${money($('profitTarget').value)}.`, 'ok');
+    requestProposal();
+  }
+
+  function stopSession(reason='Stopped') {
+    state.running = false; state.stopRequested = false;
+    $('start').disabled = !state.ws; $('stop').disabled = true;
+    $('contractStatus').textContent = reason;
+    log(reason, 'warn');
+  }
+
+  $('loadAccounts').addEventListener('click', loadAccounts);
+  $('connectTrade').addEventListener('click', connectSelected);
+  $('start').addEventListener('click', startSession);
+  $('stop').addEventListener('click', () => {
+    if (state.inTrade) { state.stopRequested = true; $('stop').disabled = true; log('Stop requested. Current contract will be allowed to finish/exit first.', 'warn'); }
+    else stopSession('Stopped by user.');
+  });
+  $('disconnect').addEventListener('click', () => { state.running=false; closeWs(); });
+  $('showPat').addEventListener('click', () => { const p=$('pat'); p.type=p.type==='password'?'text':'password'; $('showPat').textContent=p.type==='password'?'Show':'Hide'; });
+  $('maxTicks').addEventListener('input', updateStats);
+  $('account').addEventListener('change', () => {
+    const a = state.accounts.find(x => x.account_id === $('account').value);
+    if (a?.account_type === 'real') log('A REAL account is selected. Real-money trading stays blocked until you tick the acknowledgement.', 'warn');
+  });
+  window.addEventListener('beforeunload', () => closeWs());
+  updateStats();
+  log('Ready. Load accounts, select DEMO, then connect.');
+})();
+
+  </script>
+</body>
+</html>
