@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Romanx Boom 1000 Bot</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0f14;color:#fff;font-family:Arial,sans-serif}
+main{max-width:520px;margin:auto;padding:16px}h1{margin:6px 0 4px;font-size:24px}.sub{color:#9ca8b8;margin:0 0 16px}
+.card{background:#141a22;border:1px solid #283340;border-radius:16px;padding:16px;margin-bottom:14px}
+label{display:block;color:#9ca8b8;font-size:13px;margin:12px 0 6px}
+input,select{width:100%;padding:12px;background:#0d1218;color:#fff;border:1px solid #344151;border-radius:10px;font-size:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{width:100%;padding:14px;border:0;border-radius:12px;font-size:17px;font-weight:800;margin-top:10px}
+button:disabled{opacity:.45}#connect{background:#367cf6;color:#fff}#start{background:#20c782;color:#06150e}#stop{background:#652730;color:#fff}
+#state{text-align:center;font-size:30px;font-weight:900;margin:8px 0}#msg{text-align:center;color:#a6b0be;line-height:1.45;min-height:46px}
+small{display:block;color:#8895a4;line-height:1.45;margin-top:10px}.good{color:#20c782}.bad{color:#ff6575}.idle{color:#d4dae3}
+@media(max-width:520px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Romanx Boom 1000</h1>
+<p class="sub">Simple 2-tick Rise/Fall switch bot</p>
+
+<section class="card">
+<label>Deriv App ID</label>
+<input id="appId" autocomplete="off" placeholder="App ID">
+<label>Deriv PAT token</label>
+<input id="pat" type="password" autocomplete="off" placeholder="PAT token">
+<button id="connect">CONNECT DEMO</button>
+<small>Your PAT is used only in this browser tab. This build connects to your Deriv demo Options account only.</small>
+</section>
+
+<section class="card">
+<div class="row">
+<div><label>Initial stake</label><input id="initial" type="number" min="0.35" step="0.01" value="1.00"></div>
+<div><label>Loss multiplier</label><input id="mult" type="number" min="1" step="0.1" value="2.10"></div>
+</div>
+<label>Maximum stake</label>
+<input id="maxStake" type="number" min="0.35" step="0.01" value="50.00">
+<label>Starting direction</label>
+<select id="startDirection">
+<option value="FALL" selected>FALL — default for Boom drift</option>
+<option value="RISE">RISE</option>
+</select>
+<button id="start" disabled>START</button>
+<button id="stop" disabled>STOP AFTER CURRENT</button>
+<small>Fixed 2 ticks. Win = keep direction and reset stake. Loss = switch direction immediately and multiply the next stake.</small>
+</section>
+
+<section class="card">
+<div id="market" style="text-align:center;color:#9ca8b8">Boom 1000 Index</div>
+<div id="state" class="idle">DISCONNECTED</div>
+<div id="msg">Connect your demo account first.</div>
+</section>
+</main>
+
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id), API="https://api.derivws.com";
+let ws=null,connected=false,ready=false,running=false,stopAfterCurrent=false,inTrade=false;
+let symbol=null,riseType=null,fallType=null,currency="USD",direction="FALL",initialStake=1,stake=1;
+let requestId=100,proposalRequestId=0,buyRequestId=0,contractId=null,contractSubId=null,lastSettled=null;
+
+const nextReq=()=>++requestId, money=n=>"$"+Number(n).toFixed(2);
+function say(t){$("msg").textContent=t}
+function setState(t,c="idle"){$("state").textContent=t;$("state").className=c}
+function updateButtons(){$("connect").disabled=connected;$("start").disabled=!(connected&&ready&&!running&&!inTrade);$("stop").disabled=!running}
+function send(o){if(!ws||ws.readyState!==WebSocket.OPEN)throw new Error("Deriv WebSocket is not connected.");ws.send(JSON.stringify(o))}
+function credentials(){const appId=$("appId").value.trim(),pat=$("pat").value.trim();if(!appId||!pat)throw new Error("Enter your App ID and PAT token.");return{appId,pat}}
+async function api(path,method="GET"){const{appId,pat}=credentials();const r=await fetch(API+path,{method,headers:{"Authorization":"Bearer "+pat,"Deriv-App-ID":appId,"Content-Type":"application/json"}});const j=await r.json().catch(()=>({}));if(!r.ok||j.errors)throw new Error(j.errors?.[0]?.message||"Deriv request failed.");return j}
+
+async function connectDemo(){
+ try{
+  $("connect").disabled=true;say("Loading Deriv demo account...");
+  const a=await api("/trading/v1/options/accounts"),accounts=Array.isArray(a.data)?a.data:[];
+  const demo=accounts.find(x=>String(x.account_type||"").toLowerCase()==="demo");
+  if(!demo)throw new Error("No Deriv Options demo account found."); currency=demo.currency||"USD";
+  say("Opening authenticated Deriv connection...");
+  const o=await api("/trading/v1/options/accounts/"+encodeURIComponent(demo.account_id)+"/otp","POST");
+  const url=o.data?.url||o.data?.websocket_url||o.data?.websocketUrl||o.data?.ws_url;
+  if(!url)throw new Error("Deriv did not return a WebSocket URL.");
+  ws=new WebSocket(url);
+  ws.onopen=()=>{connected=true;setState("CONNECTED","good");say("Finding Boom 1000 Index...");send({active_symbols:"brief",req_id:nextReq()});updateButtons()};
+  ws.onmessage=onMessage;
+  ws.onclose=()=>{connected=false;ready=false;running=false;inTrade=false;setState("DISCONNECTED");say("Deriv connection closed.");updateButtons()};
+  ws.onerror=()=>say("WebSocket connection error.");
+ }catch(e){$("connect").disabled=false;say("Error: "+e.message)}
+}
+
+function findBoom1000(list){
+ const exact=list.find(x=>String(x.display_name||x.name||"").trim().toLowerCase()==="boom 1000 index");
+ const fallback=list.find(x=>{const n=String(x.display_name||x.name||"").toLowerCase();return n.includes("boom")&&n.includes("1000")&&!n.includes("flip")});
+ const f=exact||fallback;if(!f){say("Boom 1000 Index was not returned by Deriv.");return}
+ symbol=String(f.symbol||f.underlying_symbol||"");$("market").textContent=(f.display_name||"Boom 1000 Index")+" ("+symbol+")";
+ say("Checking available Rise/Fall contracts...");send({contracts_for:symbol,req_id:nextReq()})
+}
+
+function mapContracts(available){
+ const list=Array.isArray(available)?available:[];
+ const up=list.find(c=>String(c.sentiment||"").toLowerCase()==="up")||list.find(c=>String(c.contract_type||"").toUpperCase()==="CALL");
+ const down=list.find(c=>String(c.sentiment||"").toLowerCase()==="down")||list.find(c=>String(c.contract_type||"").toUpperCase()==="PUT");
+ riseType=up?.contract_type||null;fallType=down?.contract_type||null;
+ if(!riseType||!fallType){ready=false;say("Deriv did not expose both Rise and Fall contracts for Boom 1000 on this account.");updateButtons();return}
+ ready=true;setState("READY","good");say("Boom 1000 verified. RISE="+riseType+" • FALL="+fallType+" • 2 ticks.");updateButtons()
+}
+
+function startBot(){
+ const i=Number($("initial").value),m=Number($("mult").value),max=Number($("maxStake").value);
+ if(!Number.isFinite(i)||i<0.35){say("Initial stake must be at least 0.35.");return}
+ if(!Number.isFinite(m)||m<1){say("Loss multiplier must be at least 1.");return}
+ if(!Number.isFinite(max)||max<i){say("Maximum stake must be at least the initial stake.");return}
+ initialStake=Number(i.toFixed(2));stake=initialStake;direction=$("startDirection").value==="RISE"?"RISE":"FALL";
+ running=true;stopAfterCurrent=false;inTrade=false;proposalRequestId=0;buyRequestId=0;lastSettled=null;
+ setState(direction,direction==="RISE"?"good":"bad");say("Starting "+direction+" • 2 ticks • "+money(stake));updateButtons();trade()
+}
+
+function stopBot(){
+ if(!running)return;
+ if(inTrade||proposalRequestId||buyRequestId){stopAfterCurrent=true;$("stop").disabled=true;say("Stop requested. Current contract will finish.")}
+ else{running=false;setState("STOPPED");say("Stopped.");updateButtons()}
+}
+
+function trade(){
+ if(!running||inTrade||proposalRequestId||buyRequestId)return;
+ const max=Number($("maxStake").value);
+ if(stake>max){running=false;setState("STOPPED");say("Stopped: next stake "+money(stake)+" is above maximum "+money(max)+".");updateButtons();return}
+ const type=direction==="RISE"?riseType:fallType;if(!type){running=false;say("Selected direction is not available.");updateButtons();return}
+ proposalRequestId=nextReq();setState(direction,direction==="RISE"?"good":"bad");say(direction+" • 2 ticks • "+money(stake));
+ send({proposal:1,amount:Number(stake.toFixed(2)),basis:"stake",contract_type:type,currency,duration:2,duration_unit:"t",underlying_symbol:symbol,req_id:proposalRequestId})
+}
+
+function handleProposal(m){
+ if(!proposalRequestId)return;if(m.req_id!=null&&Number(m.req_id)!==Number(proposalRequestId))return;
+ const p=m.proposal;proposalRequestId=0;if(!p?.id){running=false;say("Invalid proposal from Deriv.");updateButtons();return}
+ const price=Number(p.ask_price??stake);if(!Number.isFinite(price)){running=false;say("Invalid proposal price.");updateButtons();return}
+ buyRequestId=nextReq();send({buy:String(p.id),price,req_id:buyRequestId})
+}
+
+function handleBuy(m){
+ if(!buyRequestId)return;if(m.req_id!=null&&Number(m.req_id)!==Number(buyRequestId))return;
+ buyRequestId=0;contractId=Number(m.buy?.contract_id);
+ if(!contractId){running=false;say("Deriv did not return a contract ID.");updateButtons();return}
+ inTrade=true;lastSettled=null;say(direction+" open • 2 ticks • "+money(stake));
+ send({proposal_open_contract:1,contract_id:contractId,subscribe:1,req_id:nextReq()});updateButtons()
+}
+
+function isClosed(c){const s=String(c.status||"").toLowerCase();return c.is_sold===1||["sold","won","lost","cancelled"].includes(s)}
+function settle(c){
+ const id=Number(c.contract_id);if(lastSettled===id)return;lastSettled=id;
+ if(contractSubId){try{send({forget:contractSubId,req_id:nextReq()})}catch(_){}contractSubId=null}
+ const profit=Number(c.profit??0),finished=direction;inTrade=false;contractId=null;
+ if(profit<0){const mult=Math.max(1,Number($("mult").value||2.1));stake=Number((stake*mult).toFixed(2));direction=finished==="RISE"?"FALL":"RISE";setState(direction,direction==="RISE"?"good":"bad");say("LOSS → switch to "+direction+" • next "+money(stake))}
+ else{stake=initialStake;direction=finished;setState(direction,direction==="RISE"?"good":"bad");say("WIN → keep "+direction+" • reset "+money(stake))}
+ if(stopAfterCurrent||!running){running=false;stopAfterCurrent=false;setState("STOPPED");say("Stopped.");updateButtons();return}
+ updateButtons();setTimeout(trade,0)
+}
+
+function onMessage(ev){
+ let m;try{m=JSON.parse(ev.data)}catch(_){return}
+ if(m.error){proposalRequestId=0;buyRequestId=0;if(running&&!inTrade)running=false;setState("STOPPED");say("Deriv error: "+(m.error.message||m.error.code||"Unknown error"));updateButtons();return}
+ if(m.msg_type==="active_symbols"&&Array.isArray(m.active_symbols))findBoom1000(m.active_symbols);
+ else if(m.msg_type==="contracts_for"&&m.contracts_for)mapContracts(m.contracts_for.available||[]);
+ else if(m.msg_type==="proposal"&&m.proposal)handleProposal(m);
+ else if(m.msg_type==="buy"&&m.buy)handleBuy(m);
+ else if(m.msg_type==="proposal_open_contract"&&m.proposal_open_contract){const c=m.proposal_open_contract;if(Number(c.contract_id)!==Number(contractId))return;if(m.subscription?.id)contractSubId=m.subscription.id;if(isClosed(c))settle(c)}
+}
+
+$("connect").addEventListener("click",connectDemo);
+$("start").addEventListener("click",startBot);
+$("stop").addEventListener("click",stopBot);
+updateButtons();
+})();
+</script>
+</body>
+</html>
