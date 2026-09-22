@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Romanx Step 100 Live/Demo</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0f14;color:#f7f9fc;font-family:Arial,Helvetica,sans-serif}
+main{max-width:640px;margin:auto;padding:14px}
+h1{font-size:24px;margin:5px 0 3px}.sub{color:#9ba8b8;margin:0 0 14px}
+.card{background:#141b23;border:1px solid #293544;border-radius:16px;padding:15px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 10px}
+label{display:block;color:#9ba8b8;font-size:13px;margin:10px 0 5px}
+input,select{width:100%;background:#0d131a;color:#fff;border:1px solid #354355;border-radius:10px;padding:12px;font-size:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{width:100%;border:0;border-radius:11px;padding:13px;font-size:16px;font-weight:800;margin-top:10px}
+button:disabled{opacity:.45}
+#connect{background:#397df5;color:#fff}#start{background:#20c883;color:#06150e}#stop{background:#642832;color:#fff}
+.note{font-size:12px;color:#8f9baa;line-height:1.5;margin-top:10px}
+.warning{background:#3a2517;border:1px solid #715032;color:#ffdca8;border-radius:10px;padding:10px;font-size:13px;margin-top:10px;display:none}
+.pill{display:inline-block;background:#222b36;color:#aeb8c4;border-radius:999px;padding:6px 9px;font-size:12px;margin-bottom:8px}
+.pill.ok{background:#143c2d;color:#d9fff0}.pill.real{background:#5a1f29;color:#ffe6ea}
+#signal{font-size:30px;font-weight:900;text-align:center;margin:6px 0}
+.good{color:#20c883}.bad{color:#ff6578}.warn{color:#f1b84b}.idle{color:#d4dae2}
+#msg{text-align:center;color:#a8b2c0;line-height:1.45;min-height:44px}
+.market{background:#0e141c;border:1px solid #20c883;border-radius:12px;padding:12px}
+.market .name{font-weight:800;font-size:18px}.market .state{font-size:12px;color:#9ba8b8;margin-top:5px}
+.tickrow{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.tick{font-size:12px;padding:4px 6px;border-radius:7px;background:#1b2430}
+.tick.up{color:#20c883}.tick.down{color:#ff6578}.tick.flat{color:#c9d1dc}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{background:#0e141c;border:1px solid #293544;border-radius:12px;padding:12px}
+.k{font-size:12px;color:#8e9bac}.v{font-size:19px;font-weight:800;margin-top:4px;word-break:break-word}
+@media(max-width:520px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Romanx Step 100</h1>
+<p class="sub">Step 100 only • 1-tick confirmation • editable 1–5 tick contract • Demo or Real account</p>
+
+<section class="card">
+<h2>1. Account</h2>
+<label>Account mode</label>
+<select id="accountMode">
+<option value="demo" selected>DEMO account</option>
+<option value="real">REAL / LIVE account</option>
+</select>
+
+<label>Deriv App ID</label>
+<input id="appId" autocomplete="off" placeholder="App ID">
+
+<label>Deriv PAT token</label>
+<input id="pat" type="password" autocomplete="off" placeholder="PAT token">
+
+<div id="realWarning" class="warning">
+REAL mode places trades against your real Deriv Options balance. The bot will refuse to start unless Deriv returns a real Options account and Step 100 CALL/PUT contracts for it.
+</div>
+
+<button id="connect" type="button">CONNECT</button>
+<div class="note">Public Step 100 prices use Deriv's public Options WebSocket. Trading uses the OTP WebSocket URL returned for the selected Demo or Real account.</div>
+</section>
+
+<section class="card">
+<h2>2. Strategy</h2>
+<div class="row">
+<div><label>Initial stake</label><input id="initialStake" type="number" min="0.35" step="0.01" value="1.00"></div>
+<div><label>Martingale multiplier</label><input id="martingale" type="number" min="1" step="0.1" value="2.10"></div>
+<div><label>Maximum stake</label><input id="maxStake" type="number" min="0.35" step="0.01" value="50.00"></div>
+<div><label>Wait after loss (seconds)</label><input id="lossWait" type="number" min="0" max="120" step="1" value="5"></div>
+<div><label>Trade duration (ticks)</label><input id="tradeTicks" type="number" min="1" max="5" step="1" value="1"></div>
+<div><label>Total profit target ($)</label><input id="profitTarget" type="number" min="0" step="0.01" value="10.00"></div>
+</div>
+
+<button id="start" type="button" disabled>START</button>
+<button id="stop" type="button" disabled>STOP AFTER CURRENT</button>
+
+<div class="note">
+Strategy: one rising Step 100 tick → RISE; one falling tick → FALL. That one movement is the confirmation. The contract duration is separate and defaults to 1 tick. Win → reset stake. Loss → Martingale, wait, then read a fresh Step 100 tick before the next entry.
+</div>
+</section>
+
+<section class="card">
+<span id="pill" class="pill">Disconnected</span>
+<div id="signal" class="idle">WAITING</div>
+<div id="msg">Choose Demo or Real, then connect.</div>
+</section>
+
+<section class="card">
+<h2>Step 100 live market</h2>
+<div class="market">
+<div class="name">Step 100 Index</div>
+<div id="marketState" class="state">Not connected</div>
+<div id="ticks" class="tickrow"></div>
+</div>
+</section>
+
+<section class="card">
+<div class="stats">
+<div class="stat"><div class="k">Account</div><div id="accountView" class="v">—</div></div>
+<div class="stat"><div class="k">Account balance</div><div id="balanceView" class="v">—</div></div>
+<div class="stat"><div class="k">Latest Step 100 price</div><div id="latestPrice" class="v">—</div></div>
+<div class="stat"><div class="k">Current stake</div><div id="currentStake" class="v">$1.00</div></div>
+<div class="stat"><div class="k">Session P/L</div><div id="sessionPL" class="v">$0.00</div></div>
+<div class="stat"><div class="k">Wins / losses</div><div id="wl" class="v">0 / 0</div></div>
+<div class="stat"><div class="k">Win probability so far</div><div id="winRate" class="v">—</div></div>
+<div class="stat"><div class="k">Last result</div><div id="lastResult" class="v">—</div></div>
+<div class="stat"><div class="k">Profit target</div><div id="targetView" class="v">$10.00</div></div>
+<div class="stat"><div class="k">Step 100 symbol</div><div id="symbolView" class="v">—</div></div>
+</div>
+</section>
+</main>
+
+<script>
+(() => {
+"use strict";
+
+const $=id=>document.getElementById(id);
+const API="https://api.derivws.com";
+const PUBLIC_WS="wss://api.derivws.com/trading/v1/options/ws/public";
+
+const S={
+  marketWs:null,tradeWs:null,marketConnected:false,tradeConnected:false,connected:false,
+  account:null,currency:"USD",symbol:null,marketReady:false,accountContractsReady:false,
+  prices:[],marketSub:null,
+  running:false,stopAfterCurrent:false,blockedUntil:0,
+  initialStake:1,currentStake:1,lastPattern:null,
+  req:100,tradeReq:500,proposalReq:0,buyReq:0,
+  inTrade:false,contractId:null,contractSub:null,lastSettled:null,tradeDir:null,
+  sessionPL:0,wins:0,losses:0
+};
+
+const money=n=>"$"+Number(n||0).toFixed(2);
+const nextReq=()=>++S.req;
+const nextTradeReq=()=>++S.tradeReq;
+
+function say(t){$("msg").textContent=t}
+function signal(t,c="idle"){$("signal").textContent=t;$("signal").className=c}
+function updatePerformance(){
+  const total=S.wins+S.losses;
+  $("winRate").textContent=total?((S.wins/total)*100).toFixed(1)+"%":"—";
+  const target=Math.max(0,Number($("profitTarget").value||0));
+  $("targetView").textContent=target>0?money(target):"OFF";
+}
+function updateModeUI(){
+  const real=$("accountMode").value==="real";
+  $("realWarning").style.display=real?"block":"none";
+  $("connect").textContent=real?"CONNECT REAL ACCOUNT":"CONNECT DEMO";
+}
+function updatePill(){
+  if(!S.connected){$("pill").textContent="Disconnected";$("pill").className="pill";return}
+  const real=String(S.account?.account_type||"").toLowerCase()==="real";
+  $("pill").textContent=(real?"REAL":"DEMO")+" + Step 100 live ticks";
+  $("pill").className=real?"pill real":"pill ok";
+}
+function controls(){
+  const ready=S.connected&&S.marketReady&&S.accountContractsReady&&S.prices.length>=2;
+  $("connect").disabled=S.connected;
+  $("start").disabled=!(ready&&!S.running);
+  $("stop").disabled=!S.running;
+}
+function marketSend(o){
+  if(!S.marketWs||S.marketWs.readyState!==WebSocket.OPEN)throw new Error("Market WebSocket is not connected.");
+  S.marketWs.send(JSON.stringify(o));
+}
+function tradeSend(o){
+  if(!S.tradeWs||S.tradeWs.readyState!==WebSocket.OPEN)throw new Error("Trading WebSocket is not connected.");
+  S.tradeWs.send(JSON.stringify(o));
+}
+function creds(){
+  const appId=$("appId").value.trim(),pat=$("pat").value.trim();
+  if(!appId||!pat)throw new Error("Enter App ID and PAT.");
+  return{appId,pat};
+}
+async function api(path,method="GET"){
+  const{appId,pat}=creds();
+  const r=await fetch(API+path,{
+    method,
+    headers:{
+      "Authorization":"Bearer "+pat,
+      "Deriv-App-ID":appId,
+      "Content-Type":"application/json"
+    }
+  });
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.errors)throw new Error(j.errors?.[0]?.message||"Deriv request failed.");
+  return j;
+}
+
+function clearConnections(){
+  try{if(S.marketWs)S.marketWs.close()}catch(_){}
+  try{if(S.tradeWs)S.tradeWs.close()}catch(_){}
+  S.marketWs=null;S.tradeWs=null;
+  S.marketConnected=false;S.tradeConnected=false;S.connected=false;
+  S.marketReady=false;S.accountContractsReady=false;
+  S.symbol=null;S.prices=[];S.account=null;
+  $("ticks").innerHTML="";
+  $("marketState").textContent="Not connected";
+  $("symbolView").textContent="—";
+  $("latestPrice").textContent="—";
+  $("accountView").textContent="—";
+  $("balanceView").textContent="—";
+}
+
+async function connectAll(){
+  try{
+    clearConnections();
+    $("connect").disabled=true;
+    say("Opening Deriv public market feed...");
+
+    S.marketWs=new WebSocket(PUBLIC_WS);
+    S.marketWs.onmessage=onMarketMessage;
+    S.marketWs.onerror=()=>say("Public market-data WebSocket error.");
+    S.marketWs.onclose=()=>{
+      S.marketConnected=false;S.connected=false;S.running=false;
+      updatePill();controls();
+    };
+
+    await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error("Public market feed timed out.")),15000);
+      S.marketWs.onopen=()=>{
+        clearTimeout(timer);S.marketConnected=true;
+        marketSend({active_symbols:"brief",req_id:nextReq()});
+        resolve();
+      };
+    });
+
+    const wanted=$("accountMode").value;
+    say("Loading "+wanted.toUpperCase()+" Options account...");
+    const a=await api("/trading/v1/options/accounts");
+    const accounts=Array.isArray(a.data)?a.data:[];
+    const matches=accounts.filter(x=>String(x.account_type||"").toLowerCase()===wanted && String(x.status||"active").toLowerCase()==="active");
+    if(!matches.length){
+      throw new Error("No active "+wanted.toUpperCase()+" Options account was returned by Deriv.");
+    }
+
+    // Prefer USD, otherwise use the first active matching account.
+    S.account=matches.find(x=>String(x.currency||"").toUpperCase()==="USD")||matches[0];
+    S.currency=S.account.currency||"USD";
+    $("accountView").textContent=(wanted==="real"?"REAL ":"DEMO ")+String(S.account.account_id||"");
+    $("balanceView").textContent=(S.account.balance!=null?money(S.account.balance):"—");
+
+    const o=await api("/trading/v1/options/accounts/"+encodeURIComponent(S.account.account_id)+"/otp","POST");
+    const url=o.data?.url||o.data?.websocket_url||o.data?.websocketUrl||o.data?.ws_url;
+    if(!url)throw new Error("Deriv did not return an authenticated trading WebSocket URL.");
+
+    say("Opening "+wanted.toUpperCase()+" trading connection...");
+    S.tradeWs=new WebSocket(url);
+    S.tradeWs.onmessage=onTradeMessage;
+    S.tradeWs.onerror=()=>say("Trading WebSocket error.");
+    S.tradeWs.onclose=()=>{
+      S.tradeConnected=false;S.connected=false;S.running=false;
+      updatePill();controls();
+    };
+
+    await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error("Trading connection timed out.")),10000);
+      S.tradeWs.onopen=()=>{clearTimeout(timer);S.tradeConnected=true;resolve()};
+    });
+
+    // If market discovery already finished, verify Step 100 contracts on this exact account.
+    if(S.symbol){
+      tradeSend({contracts_for:S.symbol,req_id:nextTradeReq()});
+    }
+
+    S.connected=S.marketConnected&&S.tradeConnected;
+    updatePill();
+    say("Connected. Waiting for Step 100 market and contract verification.");
+    controls();
+  }catch(e){
+    $("connect").disabled=false;
+    say("Error: "+e.message);
+    controls();
+  }
+}
+
+function discoverStep100(list){
+  const getName=x=>String(x.underlying_symbol_name||x.display_name||x.name||"").trim();
+  const getCode=x=>String(x.underlying_symbol||x.symbol||"").trim();
+
+  const candidates=list.filter(x=>{
+    const n=getName(x).toLowerCase();
+    return n.includes("step")&&n.includes("100");
+  });
+
+  const exact=candidates.find(x=>getName(x).toLowerCase()==="step 100 index")
+           || candidates.find(x=>getName(x).toLowerCase()==="step index 100")
+           || candidates[0];
+
+  if(!exact){
+    const names=list.map(getName).filter(n=>/step/i.test(n)).slice(0,12);
+    $("marketState").textContent="Step 100 not found";
+    say(names.length?"Step 100 not found. Deriv returned: "+names.join(", "):"No Step markets were returned by Deriv.");
+    return;
+  }
+
+  S.symbol=getCode(exact);
+  if(!S.symbol){
+    say("Step 100 was found but Deriv returned no symbol code.");
+    return;
+  }
+
+  $("symbolView").textContent=S.symbol;
+  $("marketState").textContent="Found "+getName(exact)+" • loading ticks";
+
+  // Public contract metadata + recent prices + streaming live ticks.
+  marketSend({contracts_for:S.symbol,req_id:nextReq()});
+  marketSend({ticks_history:S.symbol,count:6,end:"latest",style:"ticks",req_id:nextReq()});
+  marketSend({ticks:S.symbol,subscribe:1,req_id:nextReq()});
+
+  // Verify contract availability again on the selected account if trading WS is already open.
+  if(S.tradeConnected){
+    tradeSend({contracts_for:S.symbol,req_id:nextTradeReq()});
+  }
+}
+
+function validateCallPut(available){
+  const arr=Array.isArray(available)?available:[];
+  const cp=arr.filter(c=>String(c.contract_category||"").toLowerCase()==="callput");
+  const call=cp.some(c=>String(c.contract_type||"").toUpperCase()==="CALL");
+  const put=cp.some(c=>String(c.contract_type||"").toUpperCase()==="PUT");
+  return call&&put;
+}
+
+function renderTicks(){
+  const box=$("ticks");box.innerHTML="";
+  const p=S.prices.slice(-8);
+  for(let i=0;i<p.length;i++){
+    const s=document.createElement("span");
+    s.className="tick";
+    if(i>0)s.classList.add(p[i]>p[i-1]?"up":p[i]<p[i-1]?"down":"flat");
+    s.textContent=String(p[i]);
+    box.appendChild(s);
+  }
+}
+
+function addPrice(q){
+  if(!Number.isFinite(q))return;
+  const last=S.prices[S.prices.length-1];
+  if(last!==q){
+    S.prices.push(q);
+    if(S.prices.length>10)S.prices.shift();
+  }
+  $("latestPrice").textContent=String(q);
+  renderTicks();
+  evaluate();
+  controls();
+}
+
+function oneTickDirection(){
+  if(S.prices.length<2)return null;
+  const p=S.prices.slice(-2);
+  if(p[1]>p[0])return"RISE";
+  if(p[1]<p[0])return"FALL";
+  return null;
+}
+
+function evaluate(){
+  if(!S.running||S.inTrade||S.proposalReq||S.buyReq)return;
+
+  const target=Math.max(0,Number($("profitTarget").value||0));
+  if(target>0&&S.sessionPL>=target){
+    S.running=false;signal("TP HIT","good");
+    say("Total profit target reached. Bot stopped.");
+    controls();return;
+  }
+
+  if(Date.now()<S.blockedUntil){
+    const left=Math.max(0,Math.ceil((S.blockedUntil-Date.now())/1000));
+    signal("WAIT "+left+"s","warn");
+    say("Waiting after the last loss.");
+    return;
+  }
+
+  const dir=oneTickDirection();
+  if(!dir){
+    signal("WAITING","idle");
+    say("Step 100 live feed working; waiting for the next tick direction.");
+    return;
+  }
+
+  const stamp=S.prices.slice(-2).join("|")+":"+dir;
+  if(stamp===S.lastPattern)return;
+  S.lastPattern=stamp;
+
+  const dur=Math.max(1,Math.min(5,parseInt($("tradeTicks").value||"1",10)));
+  signal(dir,dir==="RISE"?"good":"bad");
+  say("Step 100: 1-tick "+dir+" confirmation. Opening "+dir+" for "+dur+" tick"+(dur===1?"":"s")+".");
+  openTrade(dir,dur);
+}
+
+function openTrade(dir,duration){
+  const max=Math.max(.35,Number($("maxStake").value||50));
+  if(S.currentStake>max){
+    S.running=false;signal("STOPPED");
+    say("Stopped: next stake "+money(S.currentStake)+" exceeds maximum "+money(max)+".");
+    controls();return;
+  }
+
+  S.tradeDir=dir;
+  S.proposalReq=nextTradeReq();
+  tradeSend({
+    proposal:1,
+    amount:Number(S.currentStake.toFixed(2)),
+    basis:"stake",
+    contract_type:dir==="RISE"?"CALL":"PUT",
+    currency:S.currency,
+    duration,
+    duration_unit:"t",
+    underlying_symbol:S.symbol,
+    req_id:S.proposalReq
+  });
+}
+
+function handleProposal(m){
+  if(!S.proposalReq)return;
+  if(m.req_id!=null&&Number(m.req_id)!==Number(S.proposalReq))return;
+  const p=m.proposal;S.proposalReq=0;
+  if(!p?.id){say("Invalid proposal.");return}
+  const price=Number(p.ask_price??S.currentStake);
+  S.buyReq=nextTradeReq();
+  tradeSend({buy:String(p.id),price,req_id:S.buyReq});
+}
+
+function handleBuy(m){
+  if(!S.buyReq)return;
+  if(m.req_id!=null&&Number(m.req_id)!==Number(S.buyReq))return;
+  S.buyReq=0;S.contractId=Number(m.buy?.contract_id);
+  if(!S.contractId){say("No contract ID returned.");return}
+  S.inTrade=true;S.lastSettled=null;
+  const dur=Math.max(1,Math.min(5,parseInt($("tradeTicks").value||"1",10)));
+  say("Step 100 "+S.tradeDir+" open • "+dur+" tick"+(dur===1?"":"s")+" • "+money(S.currentStake));
+  tradeSend({proposal_open_contract:1,contract_id:S.contractId,subscribe:1,req_id:nextTradeReq()});
+  controls();
+}
+
+function closed(c){
+  const s=String(c.status||"").toLowerCase();
+  return c.is_sold===1||["sold","won","lost","cancelled"].includes(s);
+}
+
+function settle(c){
+  const id=Number(c.contract_id);
+  if(S.lastSettled===id)return;
+  S.lastSettled=id;
+
+  if(S.contractSub){
+    try{tradeSend({forget:S.contractSub,req_id:nextTradeReq()})}catch(_){}
+    S.contractSub=null;
+  }
+
+  const p=Number(c.profit??0);
+  S.sessionPL=Number((S.sessionPL+(Number.isFinite(p)?p:0)).toFixed(2));
+  $("sessionPL").textContent=money(S.sessionPL);
+  $("sessionPL").className="v "+(S.sessionPL>0?"good":S.sessionPL<0?"bad":"");
+
+  if(p>0){
+    S.wins++;
+    S.currentStake=S.initialStake;
+    $("lastResult").textContent="WIN "+money(p);
+    $("lastResult").className="v good";
+    S.prices=S.prices.slice(-1);
+    S.lastPattern=null;
+    say("WIN. Stake reset. Waiting for a fresh Step 100 tick.");
+  }else{
+    S.losses++;
+    const mg=Math.max(1,Number($("martingale").value||2.1));
+    S.currentStake=Number((S.currentStake*mg).toFixed(2));
+    $("lastResult").textContent="LOSS "+money(p);
+    $("lastResult").className="v bad";
+    const wait=Math.max(0,Number($("lossWait").value||0));
+    S.blockedUntil=Date.now()+wait*1000;
+    S.prices=S.prices.slice(-1);
+    S.lastPattern=null;
+    say("LOSS. Next stake "+money(S.currentStake)+". Waiting "+wait+"s, then reading a fresh Step 100 tick.");
+  }
+
+  $("wl").textContent=S.wins+" / "+S.losses;
+  $("currentStake").textContent=money(S.currentStake);
+  updatePerformance();
+
+  S.inTrade=false;S.contractId=null;
+
+  const target=Math.max(0,Number($("profitTarget").value||0));
+  if(target>0&&S.sessionPL>=target){
+    S.running=false;S.stopAfterCurrent=false;
+    signal("TP HIT","good");
+    say("Total profit target reached: "+money(S.sessionPL)+" / "+money(target)+". Bot stopped.");
+    controls();return;
+  }
+
+  if(S.stopAfterCurrent||!S.running){
+    S.running=false;S.stopAfterCurrent=false;
+    signal("STOPPED");say("Stopped.");controls();return;
+  }
+
+  controls();setTimeout(evaluate,100);
+}
+
+function startBot(){
+  const init=Number($("initialStake").value);
+  const max=Number($("maxStake").value);
+  const mg=Number($("martingale").value);
+  const ticks=parseInt($("tradeTicks").value||"1",10);
+  const target=Number($("profitTarget").value||0);
+
+  if(!Number.isFinite(init)||init<.35){say("Initial stake must be at least 0.35.");return}
+  if(!Number.isFinite(max)||max<init){say("Maximum stake must be at least initial stake.");return}
+  if(!Number.isFinite(mg)||mg<1){say("Martingale multiplier must be at least 1.");return}
+  if(!Number.isFinite(ticks)||ticks<1||ticks>5){say("Trade duration must be between 1 and 5 ticks.");return}
+  if(!Number.isFinite(target)||target<0){say("Profit target must be 0 or higher.");return}
+  if(!S.accountContractsReady){say("Step 100 CALL/PUT is not verified for this account.");return}
+
+  S.initialStake=Number(init.toFixed(2));
+  S.currentStake=S.initialStake;
+  S.running=true;S.stopAfterCurrent=false;S.blockedUntil=0;S.lastPattern=null;
+  S.prices=S.prices.slice(-1);
+  $("currentStake").textContent=money(S.currentStake);
+  updatePerformance();
+
+  say("Started on Step 100. Waiting for 1-tick confirmation; contract duration "+ticks+" tick"+(ticks===1?"":"s")+".");
+  controls();evaluate();
+}
+
+function stopBot(){
+  if(!S.running)return;
+  if(S.inTrade||S.proposalReq||S.buyReq){
+    S.stopAfterCurrent=true;$("stop").disabled=true;
+    say("Stop requested. Current trade will finish.");
+  }else{
+    S.running=false;signal("STOPPED");say("Stopped.");controls();
+  }
+}
+
+function onMarketMessage(ev){
+  let m;try{m=JSON.parse(ev.data)}catch(_){return}
+  if(m.error){
+    say("Market data error: "+(m.error.message||m.error.code||"Unknown"));
+    return;
+  }
+
+  if(m.msg_type==="active_symbols"&&Array.isArray(m.active_symbols)){
+    discoverStep100(m.active_symbols);
+  }else if(m.msg_type==="contracts_for"&&m.contracts_for){
+    const sym=String(m.echo_req?.contracts_for||"");
+    if(sym===S.symbol){
+      S.marketReady=validateCallPut(m.contracts_for.available||[]);
+      $("marketState").textContent=S.marketReady?"Live market + CALL/PUT metadata ready ✓":"Public Step 100 CALL/PUT unavailable";
+      controls();
+    }
+  }else if(m.msg_type==="history"&&m.history){
+    const sym=String(m.echo_req?.ticks_history||"");
+    if(sym===S.symbol){
+      S.prices=(Array.isArray(m.history.prices)?m.history.prices:[]).map(Number).filter(Number.isFinite).slice(-8);
+      if(S.prices.length)$("latestPrice").textContent=String(S.prices[S.prices.length-1]);
+      renderTicks();controls();
+    }
+  }else if(m.msg_type==="tick"&&m.tick){
+    const sym=String(m.tick.symbol||m.echo_req?.ticks||"");
+    if(sym===S.symbol){
+      if(m.subscription?.id)S.marketSub=m.subscription.id;
+      addPrice(Number(m.tick.quote));
+    }
+  }
+}
+
+function onTradeMessage(ev){
+  let m;try{m=JSON.parse(ev.data)}catch(_){return}
+  if(m.error){
+    const msg=m.error.message||m.error.code||"Unknown";
+    S.proposalReq=0;S.buyReq=0;
+    say("Trading error: "+msg);
+    if(!S.inTrade){S.running=false;controls()}
+    return;
+  }
+
+  if(m.msg_type==="contracts_for"&&m.contracts_for){
+    const sym=String(m.echo_req?.contracts_for||"");
+    if(sym===S.symbol){
+      S.accountContractsReady=validateCallPut(m.contracts_for.available||[]);
+      const mode=String(S.account?.account_type||"").toUpperCase();
+      $("marketState").textContent=S.accountContractsReady
+        ?"Step 100 CALL/PUT verified on "+mode+" account ✓"
+        :"Step 100 CALL/PUT unavailable on "+mode+" account";
+      if(!S.accountContractsReady){
+        say("This "+mode+" account does not expose Step 100 CALL/PUT through Deriv right now.");
+      }else{
+        say(mode+" account and Step 100 are ready.");
+      }
+      controls();
+    }
+  }else if(m.msg_type==="proposal"&&m.proposal){
+    handleProposal(m);
+  }else if(m.msg_type==="buy"&&m.buy){
+    handleBuy(m);
+  }else if(m.msg_type==="proposal_open_contract"&&m.proposal_open_contract){
+    const c=m.proposal_open_contract;
+    if(Number(c.contract_id)!==Number(S.contractId))return;
+    if(m.subscription?.id)S.contractSub=m.subscription.id;
+    if(closed(c))settle(c);
+  }
+}
+
+$("accountMode").addEventListener("change",updateModeUI);
+$("connect").addEventListener("click",connectAll);
+$("start").addEventListener("click",startBot);
+$("stop").addEventListener("click",stopBot);
+$("profitTarget").addEventListener("input",updatePerformance);
+
+updateModeUI();
+updatePerformance();
+controls();
+})();
+</script>
+</body>
+</html>
