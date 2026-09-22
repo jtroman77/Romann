@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Romanx Rise/Fall 80-Score Scanner</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0f14;color:#f7f9fc;font-family:Arial,Helvetica,sans-serif}
+main{max-width:720px;margin:auto;padding:14px}
+h1{font-size:24px;margin:5px 0 3px}.sub{color:#9ba8b8;margin:0 0 14px}
+.card{background:#141b23;border:1px solid #293544;border-radius:16px;padding:15px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 10px}
+label{display:block;color:#9ba8b8;font-size:13px;margin:10px 0 5px}
+input,select{width:100%;background:#0d131a;color:#fff;border:1px solid #354355;border-radius:10px;padding:12px;font-size:16px}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+button{width:100%;border:0;border-radius:11px;padding:13px;font-size:16px;font-weight:800;margin-top:10px}
+button:disabled{opacity:.45}
+#connect{background:#397df5;color:#fff}#start{background:#20c883;color:#06150e}#stop{background:#642832;color:#fff}
+.note{font-size:12px;color:#8f9baa;line-height:1.5;margin-top:10px}
+.pill{display:inline-block;background:#222b36;color:#aeb8c4;border-radius:999px;padding:6px 9px;font-size:12px;margin-bottom:8px}
+.pill.ok{background:#143c2d;color:#d9fff0}
+.marketGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.market{background:#0e141c;border:1px solid #293544;border-radius:13px;padding:12px;min-width:0}
+.market .name{font-weight:800;font-size:14px;min-height:34px}
+.market .price{font-size:18px;font-weight:800;margin:8px 0}
+.market .signal{font-size:20px;font-weight:900}
+.market .small{font-size:12px;color:#8f9baa;line-height:1.4;margin-top:5px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{background:#0e141c;border:1px solid #293544;border-radius:12px;padding:12px}
+.k{font-size:12px;color:#8e9bac}.v{font-size:19px;font-weight:800;margin-top:4px;word-break:break-word}
+.good{color:#20c883}.bad{color:#ff6578}.warn{color:#f1b84b}.idle{color:#d4dae2}
+#bestSignal{font-size:28px;font-weight:900;text-align:center;margin:5px 0}
+#msg{text-align:center;color:#a8b2c0;line-height:1.45;min-height:44px}
+.check{display:flex;gap:8px;align-items:flex-start;margin-top:10px;color:#9ba8b8;font-size:13px}
+.check input{width:auto;margin-top:2px}
+@media(max-width:620px){.marketGrid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Romanx Rise/Fall 80-Score Scanner</h1>
+<p class="sub">Bull Market Index • Volatility 10 Index • Step 100 Index</p>
+
+<section class="card">
+<h2>1. Connect Deriv</h2>
+<label>Deriv App ID</label>
+<input id="appId" autocomplete="off" placeholder="App ID">
+<label>Deriv PAT token</label>
+<input id="pat" type="password" autocomplete="off" placeholder="PAT token">
+<button id="connect" type="button">CONNECT DEMO</button>
+<div class="note">Demo only. The bot verifies each market and genuine CALL/PUT Rise/Fall contracts before allowing any trade.</div>
+</section>
+
+<section class="card">
+<h2>2. Strategy controls</h2>
+<div class="row">
+<div><label>Stake</label><input id="stake" type="number" min="0.35" step="0.01" value="1.00"></div>
+<div><label>Duration (ticks)</label><input id="duration" type="number" min="3" max="10" step="1" value="5"></div>
+<div><label>Minimum setup score</label><input id="threshold" type="number" min="70" max="95" step="1" value="80"></div>
+<div><label>Confirmations</label><input id="confirmations" type="number" min="1" max="5" step="1" value="2"></div>
+<div><label>Market mode</label>
+<select id="marketMode">
+<option value="AUTO" selected>Auto — strongest eligible market</option>
+<option value="BULL">Bull Market Index only</option>
+<option value="VOL10">Volatility 10 only</option>
+<option value="STEP100">Step 100 only</option>
+</select>
+</div>
+<div><label>Cooldown after trade (seconds)</label><input id="cooldown" type="number" min="0" max="30" step="1" value="3"></div>
+</div>
+<div class="check">
+<input id="allowStep" type="checkbox">
+<label for="allowStep">Allow experimental Step 100 auto-trading. Step 100 is structurally 50/50 per tick, so an 80 setup score is not an 80% win probability.</label>
+</div>
+<button id="start" type="button" disabled>START 80-SCORE AUTO</button>
+<button id="stop" type="button" disabled>STOP AFTER CURRENT</button>
+<div class="note">“80-score” means the bot requires strong alignment in its trend filter. It does not mean an 80% guaranteed win rate.</div>
+</section>
+
+<section class="card">
+<span id="pill" class="pill">Disconnected</span>
+<div id="bestSignal" class="idle">WAITING</div>
+<div id="msg">Connect your demo account.</div>
+</section>
+
+<section class="card">
+<h2>Live market scan</h2>
+<div class="marketGrid">
+<div class="market">
+<div class="name">Bull Market Index</div>
+<div id="bullPrice" class="price">—</div>
+<div id="bullSignal" class="signal idle">—</div>
+<div id="bullInfo" class="small">Waiting for ticks</div>
+</div>
+<div class="market">
+<div class="name">Volatility 10 Index</div>
+<div id="vol10Price" class="price">—</div>
+<div id="vol10Signal" class="signal idle">—</div>
+<div id="vol10Info" class="small">Waiting for ticks</div>
+</div>
+<div class="market">
+<div class="name">Step 100 Index</div>
+<div id="stepPrice" class="price">—</div>
+<div id="stepSignal" class="signal idle">—</div>
+<div id="stepInfo" class="small">50/50 structure — auto off by default</div>
+</div>
+</div>
+</section>
+
+<section class="card">
+<div class="stats">
+<div class="stat"><div class="k">Session P/L</div><div id="sessionPL" class="v">$0.00</div></div>
+<div class="stat"><div class="k">Wins / losses</div><div id="wl" class="v">0 / 0</div></div>
+<div class="stat"><div class="k">Current contract</div><div id="contractState" class="v">None</div></div>
+<div class="stat"><div class="k">Last result</div><div id="lastResult" class="v">—</div></div>
+</div>
+</section>
+</main>
+
+<script>
+(() => {
+"use strict";
+
+const $ = id => document.getElementById(id);
+const API = "https://api.derivws.com";
+
+const S = {
+  ws:null, connected:false, running:false, stopAfterCurrent:false,
+  currency:"USD", req:100, reqMap:new Map(),
+  markets:{
+    BULL:{key:"BULL",name:"Bull Market Index",symbol:null,call:false,put:false,prices:[],ready:false,score:0,dir:null,reason:""},
+    VOL10:{key:"VOL10",name:"Volatility 10 Index",symbol:null,call:false,put:false,prices:[],ready:false,score:0,dir:null,reason:""},
+    STEP100:{key:"STEP100",name:"Step 100 Index",symbol:null,call:false,put:false,prices:[],ready:false,score:0,dir:null,reason:""}
+  },
+  candidate:null, confirmCount:0, cooldownUntil:0,
+  proposalReq:0, buyReq:0, inTrade:false, contractId:null, contractSub:null,
+  tradeMarket:null, tradeDir:null, lastSettled:null,
+  sessionPL:0, wins:0, losses:0
+};
+
+const nextReq = (kind=null,key=null) => {
+  const id=++S.req;
+  if(kind) S.reqMap.set(id,{kind,key});
+  return id;
+};
+const money = n => "$"+Number(n||0).toFixed(2);
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+
+function setPill(t,ok=false){$("pill").textContent=t;$("pill").className=ok?"pill ok":"pill"}
+function say(t){$("msg").textContent=t}
+function setBest(t,cls="idle"){$("bestSignal").textContent=t;$("bestSignal").className=cls}
+function controls(){
+  const ready=Object.values(S.markets).some(m=>m.ready&&m.prices.length>=35);
+  $("connect").disabled=S.connected;
+  $("start").disabled=!(S.connected&&ready&&!S.running);
+  $("stop").disabled=!S.running;
+}
+function send(o){
+  if(!S.ws||S.ws.readyState!==WebSocket.OPEN) throw new Error("Deriv WebSocket is not connected.");
+  S.ws.send(JSON.stringify(o));
+}
+function creds(){
+  const appId=$("appId").value.trim(),pat=$("pat").value.trim();
+  if(!appId||!pat) throw new Error("Enter App ID and PAT token.");
+  return {appId,pat};
+}
+async function api(path,method="GET"){
+  const {appId,pat}=creds();
+  const r=await fetch(API+path,{
+    method,
+    headers:{
+      "Authorization":"Bearer "+pat,
+      "Deriv-App-ID":appId,
+      "Content-Type":"application/json"
+    }
+  });
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.errors) throw new Error(j.errors?.[0]?.message||"Deriv request failed.");
+  return j;
+}
+
+async function connectDemo(){
+  try{
+    $("connect").disabled=true;
+    say("Loading demo Options account...");
+    const a=await api("/trading/v1/options/accounts");
+    const accounts=Array.isArray(a.data)?a.data:[];
+    const demo=accounts.find(x=>String(x.account_type||"").toLowerCase()==="demo");
+    if(!demo) throw new Error("No Deriv Options demo account found.");
+    S.currency=demo.currency||"USD";
+
+    const o=await api("/trading/v1/options/accounts/"+encodeURIComponent(demo.account_id)+"/otp","POST");
+    const url=o.data?.url||o.data?.websocket_url||o.data?.websocketUrl||o.data?.ws_url;
+    if(!url) throw new Error("Deriv did not return a WebSocket URL.");
+
+    S.ws=new WebSocket(url);
+    S.ws.onopen=()=>{
+      S.connected=true;setPill("DEMO connected",true);
+      say("Discovering Bull, Volatility 10, and Step 100...");
+      send({active_symbols:"brief",req_id:nextReq("ACTIVE")});
+      controls();
+    };
+    S.ws.onmessage=onMessage;
+    S.ws.onclose=()=>{
+      S.connected=false;S.running=false;S.inTrade=false;
+      setPill("Disconnected");setBest("DISCONNECTED");say("Connection closed.");controls();
+    };
+    S.ws.onerror=()=>say("WebSocket error.");
+  }catch(e){
+    $("connect").disabled=false;say("Error: "+e.message);
+  }
+}
+
+function nameOf(x){return String(x.underlying_symbol_name||x.display_name||x.name||"").trim()}
+function codeOf(x){return String(x.underlying_symbol||x.symbol||"").trim()}
+
+function discover(list){
+  const find=(test)=>list.find(x=>test(nameOf(x).toLowerCase(),x));
+  const bull=find(n=>n==="bull market index"||n.includes("bull market index"));
+  const vol10=find(n=>n==="volatility 10 index"||((n.includes("volatility 10"))&&!n.includes("(1s)")));
+  const step=find(n=>n==="step 100 index"||n==="step index");
+
+  const pairs=[["BULL",bull],["VOL10",vol10],["STEP100",step]];
+  for(const [key,f] of pairs){
+    const m=S.markets[key];
+    if(!f){m.reason="Market not returned by Deriv";renderMarket(m);continue}
+    m.symbol=codeOf(f);
+    m.name=nameOf(f)||m.name;
+    if(!m.symbol){m.reason="No symbol code";renderMarket(m);continue}
+    send({contracts_for:m.symbol,req_id:nextReq("CONTRACTS",key)});
+  }
+}
+
+function handleContracts(key,available){
+  const m=S.markets[key],arr=Array.isArray(available)?available:[];
+  const callput=arr.filter(c=>String(c.contract_category||"").toLowerCase()==="callput");
+  m.call=callput.some(c=>String(c.contract_type||"").toUpperCase()==="CALL");
+  m.put=callput.some(c=>String(c.contract_type||"").toUpperCase()==="PUT");
+  if(!m.call||!m.put){
+    m.reason="Rise/Fall CALL/PUT unavailable";
+    renderMarket(m);controls();return;
+  }
+  m.ready=true;m.reason="Loading history";
+  renderMarket(m);
+  send({ticks_history:m.symbol,end:"latest",style:"ticks",count:100,subscribe:0,req_id:nextReq("HISTORY",key)});
+}
+
+function median(a){
+  if(!a.length)return 0;
+  const b=[...a].sort((x,y)=>x-y),i=Math.floor(b.length/2);
+  return b.length%2?b[i]:(b[i-1]+b[i])/2;
+}
+function ema(arr,n){
+  if(!arr.length)return 0;
+  const k=2/(n+1);let v=arr[0];
+  for(let i=1;i<arr.length;i++)v=arr[i]*k+v*(1-k);
+  return v;
+}
+
+function features(prices){
+  const a=prices.slice(-70);
+  if(a.length<35)return null;
+  const d=[];for(let i=1;i<a.length;i++)d.push(a[i]-a[i-1]);
+  const scale=Math.max(median(d.map(Math.abs)),1e-9);
+  const last12=d.slice(-12);
+  const last20=d.slice(-20);
+  const upRatio=last12.filter(x=>x>0).length/Math.max(1,last12.length);
+  const recentBias=upRatio*2-1;
+  const fast=ema(a.slice(-25),7),slow=ema(a.slice(-50),21);
+  const momentum=clamp((fast-slow)/(scale*4),-1,1);
+  const net=last20.reduce((x,y)=>x+y,0);
+  const travel=last20.reduce((x,y)=>x+Math.abs(y),0)||1;
+  const efficiency=clamp(net/travel,-1,1);
+  const hi=Math.max(...a.slice(-20,-1)),lo=Math.min(...a.slice(-20,-1)),last=a[a.length-1];
+  const breakout=last>hi?1:last<lo?-1:0;
+  return {scale,recentBias,momentum,efficiency,breakout,last};
+}
+
+function scoreMarket(m){
+  const f=features(m.prices);
+  if(!f){m.score=0;m.dir=null;m.reason="Warming up";return}
+
+  let rise=50,fall=50;
+
+  if(m.key==="BULL"){
+    // Bull Market Index has structural positive drift: favor Rise when live trend agrees.
+    rise = 60 + 14*f.momentum + 12*f.efficiency + 8*f.recentBias + 6*Math.max(0,f.breakout);
+    fall = 40 - 16*f.momentum - 14*f.efficiency - 9*f.recentBias + 6*Math.max(0,-f.breakout);
+  }else if(m.key==="VOL10"){
+    // No directional prior: require unusually clean short-term alignment.
+    rise = 50 + 18*f.momentum + 16*f.efficiency + 10*f.recentBias + 6*Math.max(0,f.breakout);
+    fall = 50 - 18*f.momentum - 16*f.efficiency - 10*f.recentBias + 6*Math.max(0,-f.breakout);
+  }else{
+    // Step 100 is 50/50 by design. This is a pattern-quality score only, not an edge estimate.
+    rise = 50 + 16*f.momentum + 14*f.efficiency + 10*f.recentBias + 5*Math.max(0,f.breakout);
+    fall = 50 - 16*f.momentum - 14*f.efficiency - 10*f.recentBias + 5*Math.max(0,-f.breakout);
+  }
+
+  rise=clamp(Math.round(rise),1,99);fall=clamp(Math.round(fall),1,99);
+  if(rise>=fall){m.dir="RISE";m.score=rise}else{m.dir="FALL";m.score=fall}
+
+  if(m.key==="BULL"&&m.dir==="FALL")m.reason="Counter-drift reversal";
+  else if(m.key==="BULL")m.reason="Positive drift + trend";
+  else if(m.key==="VOL10")m.reason="Momentum / efficiency";
+  else m.reason="Pattern only; base process 50/50";
+}
+
+function idsFor(m){
+  if(m.key==="BULL")return["bullPrice","bullSignal","bullInfo"];
+  if(m.key==="VOL10")return["vol10Price","vol10Signal","vol10Info"];
+  return["stepPrice","stepSignal","stepInfo"];
+}
+function renderMarket(m){
+  const [pId,sId,iId]=idsFor(m);
+  $(pId).textContent=m.prices.length?String(m.prices[m.prices.length-1]):"—";
+  if(m.dir){
+    $(sId).textContent=m.dir+" "+m.score;
+    $(sId).className="signal "+(m.dir==="RISE"?"good":"bad");
+  }else{
+    $(sId).textContent=m.ready?"WARMING":"—";
+    $(sId).className="signal idle";
+  }
+  $(iId).textContent=m.reason||"Waiting";
+}
+
+function eligibleMarkets(){
+  const mode=$("marketMode").value, threshold=clamp(Number($("threshold").value||80),70,95);
+  let arr=Object.values(S.markets).filter(m=>m.ready&&m.prices.length>=35&&m.dir);
+  if(mode!=="AUTO")arr=arr.filter(m=>m.key===mode);
+  arr=arr.filter(m=>{
+    if(m.key==="STEP100"&&!$("allowStep").checked)return false;
+    // Bull counter-drift trades need extra confirmation.
+    const needed=(m.key==="BULL"&&m.dir==="FALL")?Math.min(95,threshold+5):threshold;
+    return m.score>=needed;
+  });
+  return arr.sort((a,b)=>b.score-a.score);
+}
+
+function evaluate(){
+  for(const m of Object.values(S.markets)){scoreMarket(m);renderMarket(m)}
+  controls();
+
+  const best=eligibleMarkets()[0];
+  if(!best){
+    setBest("NO TRADE","idle");
+    if(S.running&&!S.inTrade)say("Waiting for an eligible setup at or above the score threshold.");
+    S.candidate=null;S.confirmCount=0;
+    return;
+  }
+
+  setBest(best.name+" • "+best.dir+" "+best.score,best.dir==="RISE"?"good":"bad");
+
+  if(!S.running||S.inTrade||Date.now()<S.cooldownUntil)return;
+  const need=clamp(parseInt($("confirmations").value||"2",10),1,5);
+  const key=best.key+":"+best.dir;
+  if(S.candidate===key)S.confirmCount++;
+  else{S.candidate=key;S.confirmCount=1}
+  say("Best setup: "+best.name+" "+best.dir+" "+best.score+"/100 • confirmation "+S.confirmCount+"/"+need);
+  if(S.confirmCount>=need){
+    S.candidate=null;S.confirmCount=0;openTrade(best);
+  }
+}
+
+function openTrade(m){
+  if(!S.running||S.inTrade||S.proposalReq||S.buyReq)return;
+  const stake=Number($("stake").value),duration=clamp(parseInt($("duration").value||"5",10),3,10);
+  if(!Number.isFinite(stake)||stake<0.35){say("Stake must be at least 0.35.");S.running=false;controls();return}
+  const type=m.dir==="RISE"?"CALL":"PUT";
+  S.tradeMarket=m.key;S.tradeDir=m.dir;S.proposalReq=nextReq("PROPOSAL",m.key);
+  say("Requesting "+m.name+" "+m.dir+" • "+duration+" ticks...");
+  send({
+    proposal:1,
+    amount:Number(stake.toFixed(2)),
+    basis:"stake",
+    contract_type:type,
+    currency:S.currency,
+    duration,
+    duration_unit:"t",
+    underlying_symbol:m.symbol,
+    req_id:S.proposalReq
+  });
+}
+
+function handleProposal(m){
+  if(!S.proposalReq)return;
+  if(m.req_id!=null&&Number(m.req_id)!==Number(S.proposalReq))return;
+  const p=m.proposal;S.proposalReq=0;
+  if(!p?.id){say("Invalid proposal from Deriv.");return}
+  const price=Number(p.ask_price??$("stake").value);
+  S.buyReq=nextReq("BUY",S.tradeMarket);
+  send({buy:String(p.id),price,req_id:S.buyReq});
+}
+function handleBuy(m){
+  if(!S.buyReq)return;
+  if(m.req_id!=null&&Number(m.req_id)!==Number(S.buyReq))return;
+  S.buyReq=0;S.contractId=Number(m.buy?.contract_id);
+  if(!S.contractId){say("Deriv did not return a contract ID.");return}
+  S.inTrade=true;S.lastSettled=null;
+  $("contractState").textContent=S.markets[S.tradeMarket].name+" "+S.tradeDir;
+  say("Trade open. Waiting for expiry.");
+  send({proposal_open_contract:1,contract_id:S.contractId,subscribe:1,req_id:nextReq("OPEN")});
+  controls();
+}
+function isClosed(c){
+  const s=String(c.status||"").toLowerCase();
+  return c.is_sold===1||["sold","won","lost","cancelled"].includes(s);
+}
+function settle(c){
+  const id=Number(c.contract_id);if(S.lastSettled===id)return;S.lastSettled=id;
+  if(S.contractSub){try{send({forget:S.contractSub,req_id:nextReq()})}catch(_){}S.contractSub=null}
+  const p=Number(c.profit??0);
+  S.sessionPL=Number((S.sessionPL+(Number.isFinite(p)?p:0)).toFixed(2));
+  if(p>0)S.wins++; else if(p<0)S.losses++;
+  $("sessionPL").textContent=money(S.sessionPL);
+  $("sessionPL").className="v "+(S.sessionPL>0?"good":S.sessionPL<0?"bad":"");
+  $("wl").textContent=S.wins+" / "+S.losses;
+  $("lastResult").textContent=(p>0?"WIN ":"LOSS ")+money(p);
+  $("lastResult").className="v "+(p>0?"good":p<0?"bad":"");
+  $("contractState").textContent="None";
+
+  S.inTrade=false;S.contractId=null;S.cooldownUntil=Date.now()+clamp(Number($("cooldown").value||3),0,30)*1000;
+  say("Contract closed "+money(p)+". Rescanning.");
+
+  if(S.stopAfterCurrent||!S.running){
+    S.running=false;S.stopAfterCurrent=false;setBest("STOPPED");say("Stopped after current trade.");controls();return;
+  }
+  controls();setTimeout(evaluate,200);
+}
+
+function startBot(){
+  S.running=true;S.stopAfterCurrent=false;S.candidate=null;S.confirmCount=0;
+  say("80-score auto mode started. Waiting for a qualified market.");
+  controls();evaluate();
+}
+function stopBot(){
+  if(!S.running)return;
+  if(S.inTrade||S.proposalReq||S.buyReq){
+    S.stopAfterCurrent=true;$("stop").disabled=true;say("Stop requested. Current trade will finish.");
+  }else{
+    S.running=false;setBest("STOPPED");say("Stopped.");controls();
+  }
+}
+
+function onMessage(ev){
+  let m;try{m=JSON.parse(ev.data)}catch(_){return}
+
+  if(m.error){
+    const msg=m.error.message||m.error.code||"Deriv error";
+    const meta=S.reqMap.get(Number(m.req_id));
+    if(meta&&meta.key)S.markets[meta.key].reason="Deriv error: "+msg;
+    S.reqMap.delete(Number(m.req_id));
+    S.proposalReq=0;S.buyReq=0;
+    say("Deriv error: "+msg);
+    if(!S.inTrade){S.running=false;controls()}
+    return;
+  }
+
+  const rid=Number(m.req_id);
+  const meta=S.reqMap.get(rid);
+  if(meta&&m.msg_type!=="tick"&&m.msg_type!=="proposal_open_contract")S.reqMap.delete(rid);
+
+  if(m.msg_type==="active_symbols"&&Array.isArray(m.active_symbols)){
+    discover(m.active_symbols);
+  }else if(m.msg_type==="contracts_for"&&m.contracts_for&&meta?.kind==="CONTRACTS"){
+    handleContracts(meta.key,m.contracts_for.available||[]);
+  }else if(m.msg_type==="history"&&m.history&&meta?.kind==="HISTORY"){
+    const mk=S.markets[meta.key],prices=Array.isArray(m.history.prices)?m.history.prices:[];
+    mk.prices=prices.map(Number).filter(Number.isFinite).slice(-100);
+    mk.reason=mk.prices.length>=35?"Live":"Not enough history";
+    renderMarket(mk);
+    if(mk.prices.length>=35)send({ticks:mk.symbol,subscribe:1,req_id:nextReq("TICKSUB",meta.key)});
+    evaluate();
+  }else if(m.msg_type==="tick"&&m.tick){
+    const sym=String(m.tick.underlying_symbol||m.tick.symbol||m.echo_req?.ticks||"");
+    const mk=Object.values(S.markets).find(x=>x.symbol===sym);
+    if(mk){
+      const q=Number(m.tick.quote);
+      if(Number.isFinite(q)){mk.prices.push(q);if(mk.prices.length>120)mk.prices.shift();evaluate();}
+    }
+  }else if(m.msg_type==="proposal"&&m.proposal){
+    handleProposal(m);
+  }else if(m.msg_type==="buy"&&m.buy){
+    handleBuy(m);
+  }else if(m.msg_type==="proposal_open_contract"&&m.proposal_open_contract){
+    const c=m.proposal_open_contract;
+    if(Number(c.contract_id)!==Number(S.contractId))return;
+    if(m.subscription?.id)S.contractSub=m.subscription.id;
+    if(isClosed(c))settle(c);
+  }
+}
+
+$("connect").addEventListener("click",connectDemo);
+$("start").addEventListener("click",startBot);
+$("stop").addEventListener("click",stopBot);
+$("allowStep").addEventListener("change",evaluate);
+$("marketMode").addEventListener("change",evaluate);
+$("threshold").addEventListener("change",evaluate);
+controls();
+})();
+</script>
+</body>
+</html>
