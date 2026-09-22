@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Romanx Boom Trend Multiplier</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0f14;color:#f7f9fc;font-family:Arial,Helvetica,sans-serif}
+main{max-width:620px;margin:auto;padding:14px}
+h1{font-size:24px;margin:5px 0 3px}.sub{color:#9ba8b8;margin:0 0 14px}
+.card{background:#141b23;border:1px solid #293544;border-radius:16px;padding:15px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 10px}
+label{display:block;color:#9ba8b8;font-size:13px;margin:10px 0 5px}
+input,select{width:100%;background:#0d131a;color:#fff;border:1px solid #354355;border-radius:10px;padding:12px;font-size:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{width:100%;border:0;border-radius:11px;padding:13px;font-size:16px;font-weight:800;margin-top:10px}
+button:disabled{opacity:.45}
+#connect{background:#397df5;color:#fff}#start{background:#20c883;color:#06150e}#stop{background:#642832;color:#fff}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#0e141c;border:1px solid #293544;border-radius:12px;padding:12px}
+.k{font-size:12px;color:#8e9bac}.v{font-size:21px;font-weight:800;margin-top:4px;word-break:break-word}
+#trendDir{font-size:30px;font-weight:900;text-align:center;margin:5px 0}
+.good{color:#20c883}.bad{color:#ff6578}.warn{color:#f1b84b}.idle{color:#d4dae2}
+#msg{color:#a8b2c0;text-align:center;line-height:1.4;min-height:42px}
+.note{font-size:12px;color:#8f9baa;line-height:1.5;margin-top:10px}
+.pill{display:inline-block;background:#222b36;color:#aeb8c4;border-radius:999px;padding:6px 9px;font-size:12px;margin-bottom:8px}
+.pill.ok{background:#143c2d;color:#d9fff0}
+@media(max-width:520px){.row,.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Romanx Boom 1000 Trend Multiplier</h1>
+<p class="sub">Reads Boom 1000 ticks, scores the current trend, then uses MULTUP or MULTDOWN.</p>
+
+<section class="card">
+<h2>1. Connect Deriv</h2>
+<label>Deriv App ID</label>
+<input id="appId" autocomplete="off" placeholder="App ID">
+<label>Deriv PAT token</label>
+<input id="pat" type="password" autocomplete="off" placeholder="PAT token">
+<button id="connect" type="button">CONNECT DEMO</button>
+<div class="note">Demo only in this build. The PAT is used in this browser tab to request the authenticated Deriv WebSocket URL.</div>
+</section>
+
+<section class="card">
+<h2>2. Multiplier setup</h2>
+<div class="row">
+<div><label>Stake</label><input id="stake" type="number" min="0.35" step="0.01" value="1.00"></div>
+<div><label>Multiplier</label><input id="multiplier" type="number" min="2" step="1" value="10"></div>
+<div><label>Take profit ($)</label><input id="takeProfit" type="number" min="0.01" step="0.01" value="0.50"></div>
+<div><label>Stop loss ($)</label><input id="stopLoss" type="number" min="0.01" step="0.01" value="1.00"></div>
+<div><label>Trend score required</label><input id="minScore" type="number" min="55" max="95" step="1" value="70"></div>
+<div><label>Confirm ticks</label><input id="confirmTicks" type="number" min="1" max="8" step="1" value="3"></div>
+</div>
+<button id="start" type="button" disabled>START AUTO TREND</button>
+<button id="stop" type="button" disabled>STOP AFTER CURRENT</button>
+<div class="note">The ETA below is only a live estimate from the recent profit slope of the open multiplier contract. It is not a guaranteed time-to-target.</div>
+</section>
+
+<section class="card">
+<span id="pill" class="pill">Disconnected</span>
+<div id="market" style="text-align:center;color:#9ba8b8">Boom 1000 Index</div>
+<div id="trendDir" class="idle">WAITING</div>
+<div id="msg">Connect your demo account.</div>
+</section>
+
+<section class="card">
+<div class="stats">
+<div class="stat"><div class="k">Trend score</div><div id="trendScore" class="v">—</div></div>
+<div class="stat"><div class="k">Current price</div><div id="spot" class="v">—</div></div>
+<div class="stat"><div class="k">Open profit</div><div id="openProfit" class="v">$0.00</div></div>
+<div class="stat"><div class="k">Session P/L</div><div id="sessionPL" class="v">$0.00</div></div>
+<div class="stat"><div class="k">ETA to take profit</div><div id="eta" class="v">—</div></div>
+<div class="stat"><div class="k">Contract</div><div id="contractState" class="v">None</div></div>
+</div>
+</section>
+</main>
+
+<script>
+(() => {
+"use strict";
+
+const $ = id => document.getElementById(id);
+const API = "https://api.derivws.com";
+
+const S = {
+  ws:null, connected:false, ready:false, running:false, stopAfterCurrent:false,
+  account:null, currency:"USD", symbol:null, multUp:false, multDown:false,
+  ticks:[], tickSub:null, historyLoaded:false,
+  candidate:null, confirmCount:0, lastSignalTick:0,
+  req:100, proposalReq:0, buyReq:0, updateReq:0, sellReq:0,
+  inTrade:false, contractId:null, contractSub:null, contractDirection:null,
+  sessionPL:0, openProfit:0, profitSamples:[], selling:false, lastSettled:null
+};
+
+const nextReq = () => ++S.req;
+const money = n => "$" + Number(n || 0).toFixed(2);
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+
+function setPill(t,ok=false){$("pill").textContent=t;$("pill").className=ok?"pill ok":"pill"}
+function say(t){$("msg").textContent=t}
+function setDir(t,cls="idle"){$("trendDir").textContent=t;$("trendDir").className=cls}
+function controls(){
+  $("connect").disabled=S.connected;
+  $("start").disabled=!(S.connected&&S.ready&&S.historyLoaded&&!S.running);
+  $("stop").disabled=!S.running;
+}
+function send(o){
+  if(!S.ws || S.ws.readyState!==WebSocket.OPEN) throw new Error("Deriv WebSocket is not connected.");
+  S.ws.send(JSON.stringify(o));
+}
+function creds(){
+  const appId=$("appId").value.trim(), pat=$("pat").value.trim();
+  if(!appId||!pat) throw new Error("Enter App ID and PAT token.");
+  return {appId,pat};
+}
+async function api(path,method="GET"){
+  const {appId,pat}=creds();
+  const r=await fetch(API+path,{
+    method,
+    headers:{
+      "Authorization":"Bearer "+pat,
+      "Deriv-App-ID":appId,
+      "Content-Type":"application/json"
+    }
+  });
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.errors) throw new Error(j.errors?.[0]?.message||"Deriv request failed.");
+  return j;
+}
+
+async function connectDemo(){
+  try{
+    $("connect").disabled=true;
+    say("Loading Deriv demo account...");
+    const a=await api("/trading/v1/options/accounts");
+    const accounts=Array.isArray(a.data)?a.data:[];
+    const demo=accounts.find(x=>String(x.account_type||"").toLowerCase()==="demo");
+    if(!demo) throw new Error("No Deriv Options demo account found.");
+
+    S.account=demo; S.currency=demo.currency||"USD";
+    say("Opening authenticated WebSocket...");
+    const o=await api("/trading/v1/options/accounts/"+encodeURIComponent(demo.account_id)+"/otp","POST");
+    const url=o.data?.url||o.data?.websocket_url||o.data?.websocketUrl||o.data?.ws_url;
+    if(!url) throw new Error("Deriv did not return a WebSocket URL.");
+
+    S.ws=new WebSocket(url);
+    S.ws.onopen=()=>{
+      S.connected=true;
+      setPill("DEMO connected",true);
+      say("Finding Boom 1000...");
+      send({active_symbols:"brief",req_id:nextReq()});
+      controls();
+    };
+    S.ws.onmessage=onMessage;
+    S.ws.onclose=()=>{
+      S.connected=false;S.ready=false;S.running=false;S.inTrade=false;
+      setPill("Disconnected");setDir("DISCONNECTED");say("Connection closed.");controls();
+    };
+    S.ws.onerror=()=>say("WebSocket error.");
+  }catch(e){
+    $("connect").disabled=false;
+    say("Error: "+e.message);
+  }
+}
+
+function nameOf(x){return String(x.underlying_symbol_name||x.display_name||x.name||"").trim()}
+function codeOf(x){return String(x.underlying_symbol||x.symbol||"").trim()}
+
+function findBoom1000(list){
+  const exact=list.find(x=>nameOf(x).toLowerCase()==="boom 1000 index");
+  const fallback=list.find(x=>{
+    const n=nameOf(x).toLowerCase();
+    return n.includes("boom")&&n.includes("1000")&&!n.includes("flip");
+  });
+  const f=exact||fallback;
+  if(!f){say("Boom 1000 was not returned by Deriv.");return}
+  S.symbol=codeOf(f);
+  if(!S.symbol){say("Boom 1000 found but no symbol code returned.");return}
+  $("market").textContent=nameOf(f)+" ("+S.symbol+")";
+  say("Checking multiplier contracts...");
+  send({contracts_for:S.symbol,req_id:nextReq()});
+}
+
+function mapContracts(list){
+  const arr=Array.isArray(list)?list:[];
+  S.multUp=arr.some(c=>String(c.contract_type||"").toUpperCase()==="MULTUP");
+  S.multDown=arr.some(c=>String(c.contract_type||"").toUpperCase()==="MULTDOWN");
+  if(!S.multUp||!S.multDown){
+    const types=[...new Set(arr.map(c=>String(c.contract_type||"")).filter(Boolean))];
+    setDir("NOT AVAILABLE","bad");
+    say("Boom 1000 does not expose both MULTUP and MULTDOWN here. Available: "+(types.join(", ")||"none"));
+    return;
+  }
+  S.ready=true;
+  say("Multiplier contracts verified. Loading recent ticks...");
+  send({ticks_history:S.symbol,end:"latest",style:"ticks",count:80,subscribe:0,req_id:nextReq()});
+  controls();
+}
+
+function median(a){
+  if(!a.length)return 0;
+  const b=[...a].sort((x,y)=>x-y),m=Math.floor(b.length/2);
+  return b.length%2?b[m]:(b[m-1]+b[m])/2;
+}
+function ema(arr,n){
+  if(!arr.length)return 0;
+  const k=2/(n+1);let v=arr[0];
+  for(let i=1;i<arr.length;i++)v=arr[i]*k+v*(1-k);
+  return v;
+}
+function trendModel(){
+  const a=S.ticks.map(x=>x.p);
+  if(a.length<35)return null;
+  const w=a.slice(-60);
+  const dif=[];for(let i=1;i<w.length;i++)dif.push(w[i]-w[i-1]);
+  const scale=Math.max(median(dif.map(Math.abs)),1e-9);
+  const last12=dif.slice(-12);
+  const upRatio=last12.filter(x=>x>0).length/Math.max(1,last12.length);
+  const downRatio=last12.filter(x=>x<0).length/Math.max(1,last12.length);
+  const fast=ema(w.slice(-20),6), slow=ema(w.slice(-40),18);
+  const slope=(w[w.length-1]-w[Math.max(0,w.length-11)])/(10*scale);
+  const recent=dif.slice(-8);
+  const spikeAgo=(()=>{
+    for(let i=recent.length-1;i>=0;i--){
+      if(recent[i]>4.5*scale)return recent.length-1-i;
+    }
+    return 99;
+  })();
+
+  let down=50,up=50;
+  if(fast<slow)down+=16; else up+=16;
+  down+=clamp(-slope*9,0,18); up+=clamp(slope*9,0,18);
+  if(downRatio>=0.58)down+=12;
+  if(upRatio>=0.58)up+=12;
+
+  // Boom-specific spike handling: don't chase a fresh upward spike with MULTDOWN.
+  if(spikeAgo<=1){down-=24;up+=10}
+  else if(spikeAgo>=2&&spikeAgo<=6){down+=8}
+
+  const direction=down>=up?"DOWN":"UP";
+  const score=Math.round(clamp(Math.max(down,up),0,99));
+  return {direction,score,down:Math.round(down),up:Math.round(up),spikeAgo,slope,scale};
+}
+
+function renderTrend(){
+  const t=trendModel();
+  if(!t){setDir("WARMING UP");$("trendScore").textContent="—";return}
+  $("trendScore").textContent=t.score+"/100";
+  const dir=t.direction==="DOWN"?"FALL / MULTDOWN":"RISE / MULTUP";
+  setDir(dir,t.direction==="DOWN"?"bad":"good");
+
+  if(S.running&&!S.inTrade) maybeEnter(t);
+}
+
+function maybeEnter(t){
+  const min=clamp(Number($("minScore").value||70),55,95);
+  const need=clamp(parseInt($("confirmTicks").value||"3",10),1,8);
+  if(t.score<min){
+    S.candidate=null;S.confirmCount=0;
+    say("Waiting: trend score "+t.score+" is below "+min+".");
+    return;
+  }
+  if(S.candidate===t.direction)S.confirmCount++;
+  else{S.candidate=t.direction;S.confirmCount=1}
+  say("Trend "+t.direction+" "+t.score+"/100 • confirmation "+S.confirmCount+"/"+need);
+  if(S.confirmCount>=need){
+    S.confirmCount=0;S.candidate=null;
+    openMultiplier(t.direction);
+  }
+}
+
+function openMultiplier(dir){
+  if(!S.running||S.inTrade||S.proposalReq||S.buyReq)return;
+  const stake=Number($("stake").value), mult=Number($("multiplier").value);
+  if(!Number.isFinite(stake)||stake<0.35){say("Stake must be at least 0.35.");S.running=false;controls();return}
+  if(!Number.isFinite(mult)||mult<2){say("Multiplier must be at least 2.");S.running=false;controls();return}
+  const type=dir==="DOWN"?"MULTDOWN":"MULTUP";
+  if((type==="MULTDOWN"&&!S.multDown)||(type==="MULTUP"&&!S.multUp)){say(type+" is not available.");return}
+
+  S.proposalReq=nextReq();
+  S.contractDirection=dir;
+  say("Requesting "+type+" proposal...");
+  send({
+    proposal:1,
+    amount:Number(stake.toFixed(2)),
+    basis:"stake",
+    contract_type:type,
+    currency:S.currency,
+    duration_unit:"s",
+    multiplier:Math.round(mult),
+    underlying_symbol:S.symbol,
+    req_id:S.proposalReq
+  });
+}
+
+function handleProposal(m){
+  if(!S.proposalReq)return;
+  if(m.req_id!=null&&Number(m.req_id)!==Number(S.proposalReq))return;
+  const p=m.proposal;S.proposalReq=0;
+  if(!p?.id){say("Invalid multiplier proposal.");return}
+  const price=Number(p.ask_price??$("stake").value);
+  S.buyReq=nextReq();
+  send({buy:String(p.id),price,req_id:S.buyReq});
+}
+
+function handleBuy(m){
+  if(!S.buyReq)return;
+  if(m.req_id!=null&&Number(m.req_id)!==Number(S.buyReq))return;
+  S.buyReq=0;
+  S.contractId=Number(m.buy?.contract_id);
+  if(!S.contractId){say("No contract ID returned.");return}
+
+  S.inTrade=true;S.lastSettled=null;S.openProfit=0;S.profitSamples=[];S.selling=false;
+  $("contractState").textContent=S.contractDirection==="DOWN"?"MULTDOWN":"MULTUP";
+  $("openProfit").textContent=money(0);$("eta").textContent="Calculating…";
+  say("Multiplier open. Monitoring profit and ETA.");
+
+  send({proposal_open_contract:1,contract_id:S.contractId,subscribe:1,req_id:nextReq()});
+
+  const tp=Math.max(.01,Number($("takeProfit").value||.5));
+  const sl=Math.max(.01,Number($("stopLoss").value||1));
+  S.updateReq=nextReq();
+  send({
+    contract_update:1,
+    contract_id:S.contractId,
+    limit_order:{take_profit:tp,stop_loss:sl},
+    req_id:S.updateReq
+  });
+  controls();
+}
+
+function etaText(){
+  const tp=Math.max(.01,Number($("takeProfit").value||.5));
+  const pts=S.profitSamples.slice(-20);
+  if(pts.length<5)return "Calculating…";
+  const t0=pts[0].t;
+  const xs=pts.map(x=>(x.t-t0)/1000), ys=pts.map(x=>x.p);
+  const xm=xs.reduce((a,b)=>a+b,0)/xs.length, ym=ys.reduce((a,b)=>a+b,0)/ys.length;
+  let num=0,den=0;
+  for(let i=0;i<xs.length;i++){num+=(xs[i]-xm)*(ys[i]-ym);den+=(xs[i]-xm)*(xs[i]-xm)}
+  const slope=den>0?num/den:0; // dollars per second
+  const remain=tp-S.openProfit;
+  if(remain<=0)return "Target reached";
+  if(slope<=0.001)return "No reliable ETA";
+  const sec=remain/slope;
+  if(!Number.isFinite(sec)||sec<0||sec>3600)return "No reliable ETA";
+  if(sec<60)return Math.ceil(sec)+" sec";
+  return Math.ceil(sec/60)+" min";
+}
+
+function marketSell(reason){
+  if(!S.inTrade||S.selling||!S.contractId)return;
+  S.selling=true;S.sellReq=nextReq();
+  say(reason+" — closing at market...");
+  send({sell:S.contractId,price:0,req_id:S.sellReq});
+}
+
+function handleOpen(c,subId){
+  if(Number(c.contract_id)!==Number(S.contractId))return;
+  if(subId)S.contractSub=subId;
+
+  const p=Number(c.profit??0);
+  S.openProfit=Number.isFinite(p)?p:0;
+  $("openProfit").textContent=money(S.openProfit);
+  $("openProfit").className="v "+(S.openProfit>0?"good":S.openProfit<0?"bad":"");
+  const now=Date.now();
+  S.profitSamples.push({t:now,p:S.openProfit});
+  if(S.profitSamples.length>40)S.profitSamples.shift();
+  $("eta").textContent=etaText();
+
+  const tp=Math.max(.01,Number($("takeProfit").value||.5));
+  const sl=Math.max(.01,Number($("stopLoss").value||1));
+  if(S.openProfit>=tp)marketSell("Take-profit reached");
+  else if(S.openProfit<=-sl)marketSell("Stop-loss reached");
+
+  const st=String(c.status||"").toLowerCase();
+  if(c.is_sold===1||["sold","won","lost","cancelled"].includes(st))settle(c);
+}
+
+function settle(c){
+  const id=Number(c.contract_id);if(S.lastSettled===id)return;S.lastSettled=id;
+  if(S.contractSub){try{send({forget:S.contractSub,req_id:nextReq()})}catch(_){}S.contractSub=null}
+
+  const p=Number(c.profit??S.openProfit??0);
+  S.sessionPL=Number((S.sessionPL+(Number.isFinite(p)?p:0)).toFixed(2));
+  $("sessionPL").textContent=money(S.sessionPL);
+  $("sessionPL").className="v "+(S.sessionPL>0?"good":S.sessionPL<0?"bad":"");
+  $("openProfit").textContent=money(0);$("eta").textContent="—";$("contractState").textContent="None";
+
+  S.inTrade=false;S.contractId=null;S.selling=false;S.profitSamples=[];S.openProfit=0;
+  say("Contract closed: "+money(p)+". Waiting for the next confirmed trend.");
+
+  if(S.stopAfterCurrent||!S.running){
+    S.running=false;S.stopAfterCurrent=false;
+    setDir("STOPPED");say("Stopped after current contract.");controls();return;
+  }
+  controls();
+}
+
+function startBot(){
+  if(!S.ready||!S.historyLoaded){say("Boom 1000 multiplier data is not ready yet.");return}
+  S.running=true;S.stopAfterCurrent=false;S.candidate=null;S.confirmCount=0;
+  say("Auto trend mode started. Waiting for a confirmed Boom direction.");
+  controls();renderTrend();
+}
+function stopBot(){
+  if(!S.running)return;
+  if(S.inTrade){S.stopAfterCurrent=true;$("stop").disabled=true;say("Stop requested. Current multiplier will finish/close first.");}
+  else{S.running=false;setDir("STOPPED");say("Stopped.");controls();}
+}
+
+function onTick(q,epoch){
+  const p=Number(q);if(!Number.isFinite(p))return;
+  S.ticks.push({p,t:Number(epoch||Date.now()/1000)});
+  if(S.ticks.length>120)S.ticks.shift();
+  $("spot").textContent=String(p);
+  renderTrend();
+}
+
+function onMessage(ev){
+  let m;try{m=JSON.parse(ev.data)}catch(_){return}
+
+  if(m.error){
+    const msg=m.error.message||m.error.code||"Deriv error";
+    if(S.updateReq && Number(m.req_id)===Number(S.updateReq)){
+      S.updateReq=0;
+      say("Deriv limit-order update was rejected; local TP/SL guard remains active. "+msg);
+      return;
+    }
+    if(S.sellReq && Number(m.req_id)===Number(S.sellReq)){
+      S.sellReq=0;S.selling=false;say("Sell request error: "+msg);return;
+    }
+    S.proposalReq=0;S.buyReq=0;
+    say("Deriv error: "+msg);
+    if(!S.inTrade){S.running=false;controls()}
+    return;
+  }
+
+  if(m.msg_type==="active_symbols"&&Array.isArray(m.active_symbols))findBoom1000(m.active_symbols);
+  else if(m.msg_type==="contracts_for"&&m.contracts_for)mapContracts(m.contracts_for.available||[]);
+  else if(m.msg_type==="history"&&m.history){
+    const prices=Array.isArray(m.history.prices)?m.history.prices:[];
+    const times=Array.isArray(m.history.times)?m.history.times:[];
+    S.ticks=prices.map((p,i)=>({p:Number(p),t:Number(times[i]||0)})).filter(x=>Number.isFinite(x.p));
+    S.historyLoaded=S.ticks.length>=35;
+    if(S.historyLoaded){
+      $("spot").textContent=String(S.ticks[S.ticks.length-1].p);
+      say("Trend engine ready. Subscribe to live Boom ticks.");
+      send({ticks:S.symbol,subscribe:1,req_id:nextReq()});
+      renderTrend();controls();
+    }else say("Not enough Boom tick history returned.");
+  }
+  else if(m.msg_type==="tick"&&m.tick){
+    if(m.subscription?.id)S.tickSub=m.subscription.id;
+    onTick(m.tick.quote,m.tick.epoch);
+  }
+  else if(m.msg_type==="proposal"&&m.proposal)handleProposal(m);
+  else if(m.msg_type==="buy"&&m.buy)handleBuy(m);
+  else if(m.msg_type==="proposal_open_contract"&&m.proposal_open_contract)handleOpen(m.proposal_open_contract,m.subscription?.id);
+  else if(m.msg_type==="contract_update"){S.updateReq=0}
+  else if(m.msg_type==="sell"&&m.sell){S.sellReq=0}
+}
+
+$("connect").addEventListener("click",connectDemo);
+$("start").addEventListener("click",startBot);
+$("stop").addEventListener("click",stopBot);
+controls();
+})();
+</script>
+</body>
+</html>
