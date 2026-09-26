@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Roman V9.7 — Three Mode Scanner</title>
+<style>
+:root{color-scheme:dark;--bg:#080d12;--card:#111922;--card2:#0c131b;--line:#293647;--text:#eef3f8;--muted:#92a0b2;--g:#31c48d;--r:#ff6677;--a:#f0b64d;--b:#63b3ed}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:920px;margin:auto;padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;margin-bottom:14px}
+h1{font-size:25px;margin:0 0 6px}h2{font-size:18px;margin:0 0 12px}.note,label{color:var(--muted);font-size:12px;line-height:1.45}
+.row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+input,select{width:100%;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px}
+button{width:100%;padding:13px;border:0;border-radius:13px;margin-top:10px;font-weight:800;background:#238463;color:#04120d;font-size:15px}
+button.secondary{background:#263547;color:#e8eef5}button.danger{background:#5c2d39;color:#ffd8df}button.warn{background:#6b5223;color:#fff0c6}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{padding:11px;border:1px solid var(--line);border-radius:13px;background:var(--card2)}
+.k{font-size:11px;color:var(--muted)}.v{font-size:19px;font-weight:850;margin-top:3px}.good{color:var(--g)}.bad{color:var(--r)}.amber{color:var(--a)}
+.mode{display:none}.mode.active{display:block}.pill{display:inline-flex;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;font-weight:800}
+.safeBox{padding:9px 11px;border:1px solid #256b55;border-radius:12px;background:#0c241d;color:#7ce0b8;font-weight:850;font-size:12px}
+.safeBox.unsafe{border-color:#7a4c2a;background:#2c1d0d;color:#ffc66c}
+canvas{width:100%;height:125px;background:#091018;border:1px solid var(--line);border-radius:13px;display:block}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:7px;border-bottom:1px solid #213040;text-align:left}th{color:var(--muted)}
+.switchline{display:flex;gap:8px;align-items:center}.switchline input{width:auto}
+@media(max-width:680px){.row,.row3{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.wrap{padding:9px}}
+</style>
+</head>
+<body><div class="wrap">
+<section class="card"><h1>Roman V9.7 — Three Mode Scanner</h1>
+<div class="note">Independent Accumulator BB, Opposite Even/Odd and Rise/Fall EMA20 + RSI50 modes. Every mode has its own settlement wait and Switch Market After Loss option.</div></section>
+
+<section class="card"><h2>1. Deriv connection</h2><div class="row3">
+<div><label>Deriv App ID</label><input id="appId" placeholder="App ID"></div>
+<div><label>Personal Access Token</label><input id="pat" type="password" placeholder="PAT with trade scope"></div>
+<div><label>Account</label><select id="accountMode"><option value="demo">DEMO</option><option value="real">REAL</option></select></div>
+</div><button id="connect">CONNECT</button><div style="margin-top:10px"><span id="pill" class="pill">Disconnected</span></div><div id="status" class="note" style="margin-top:8px">Loading JavaScript…</div></section>
+
+<section class="card"><h2>2. Bot option</h2><select id="mode">
+<option value="accu">ACCUMULATOR — BOLLINGER BB(20,2)</option>
+<option value="digits">OPPOSITE EVEN / ODD — JUMP 10–75</option>
+<option value="rf">RISE / FALL — EMA20 + RSI50</option>
+</select></section>
+
+<section id="accu" class="card mode active"><h2>Accumulator BB</h2>
+<div class="row3">
+<div><label>Growth rate</label><select id="accGrowth"><option value=".01">1%</option><option value=".02">2%</option><option value=".03">3%</option><option value=".04">4%</option><option value=".05">5%</option></select></div>
+<div><label>Settlement wait (ticks)</label><input id="accWait" type="number" min="0" value="0"></div>
+<div><label>Minimum BB history</label><input id="accHist" type="number" min="20" value="60"></div>
+<div><label>Squeeze max width / median</label><input id="squeezeRatio" type="number" step=".01" value="0.85"></div>
+<div><label>Max center distance (half-band)</label><input id="centerMax" type="number" step=".05" value="0.45"></div>
+<div><label>Max recent width expansion</label><input id="expandMax" type="number" step=".01" value="0.08"></div>
+</div>
+<div class="switchline" style="margin-top:12px"><input id="accSwitch" type="checkbox" checked><label>Switch to next qualified market after loss</label></div>
+<div id="bbSafe" class="safeBox" style="margin-top:10px">SAFE CHECK — waiting for market data</div>
+<button id="approveExit" class="warn" disabled>AUTO TP 0.50× ACTIVE</button>
+<div class="note" style="margin-top:8px">Bollinger Accumulator automatically exits when net contract profit reaches 0.50× the active stake (e.g. +$0.50 on $1, +$1.00 on $2). No manual approval is required.</div></section>
+
+<section id="digits" class="card mode"><h2>Opposite Even / Odd</h2>
+<div class="row3">
+<div><label>Contract duration (ticks)</label><input id="digitDuration" type="number" min="1" value="1"></div>
+<div><label>Settlement wait (ticks)</label><input id="digitWait" type="number" min="0" value="1"></div>
+<div><label>Confirmation window</label><input id="digitWindow" type="number" min="2" max="20" value="2"></div>
+</div>
+<div class="switchline" style="margin-top:12px"><input id="digitSwitch" type="checkbox" checked><label>Switch to next Jump market after loss</label></div>
+<div class="note" style="margin-top:8px">Jump 10/25/50/75 only. Confirmed EVEN → trade ODD next tick. Confirmed ODD → trade EVEN next tick.</div></section>
+
+<section id="rf" class="card mode"><h2>Rise / Fall — EMA20 + RSI50</h2>
+<div class="row3">
+<div><label>Contract duration (ticks)</label><input id="rfDuration" type="number" min="1" value="6"></div>
+<div><label>Settlement wait (ticks)</label><input id="rfWait" type="number" min="0" value="5"></div>
+<div><label>RSI period</label><input id="rsiPeriod" type="number" min="2" value="14"></div>
+</div>
+<div class="switchline" style="margin-top:12px"><input id="rfSwitch" type="checkbox" checked><label>Switch to next qualified Rise/Fall market after loss</label></div>
+<div class="note" style="margin-top:8px">Bull, Bear, Step 100/200/300/400/500. Price above EMA20 + RSI &gt; 50 → RISE. Price below EMA20 + RSI &lt; 50 → FALL.</div></section>
+
+<section class="card"><h2>3. Cycle / money management</h2><div class="row3">
+<div><label>Initial stake ($)</label><input id="baseStake" type="number" step=".01" value="1"></div>
+<div><label>Recovery multiplier</label><input id="mult" type="number" step=".01" value="2"></div>
+<div><label>Maximum stake ($)</label><input id="maxStake" type="number" step=".01" value="400"></div>
+<div><label>Bollinger auto profit (× stake)</label><input id="accTarget" type="number" step=".05" min=".05" value=".50"></div>
+<div><label>Session take profit ($)</label><input id="sessionTP" type="number" step=".01" value="20"></div>
+<div><label>Session stop loss ($)</label><input id="sessionSL" type="number" step=".01" value="400"></div>
+<div><label>Maximum loss streak</label><input id="maxLoss" type="number" value="5"></div>
+<div><label>Cycle mode</label><select id="cycleMode"><option value="continuous">CONTINUOUS — win resets stake</option><option value="single">SINGLE WIN — stop after first win</option></select></div>
+</div>
+<div class="note" style="margin-top:9px">Bollinger auto profit is net profit × stake: 0.50 means +$0.50 on $1 and +$1.00 on $2. Loss → recovery stake; win → reset to initial stake. For all modes, loss applies the recovery multiplier; win resets to initial stake.</div>
+<button id="start">START BOT</button><button id="stop" class="danger">STOP</button></section>
+
+<section class="card"><h2>4. Live cycle</h2><div class="grid">
+<div class="stat"><div class="k">Mode</div><div id="vMode" class="v">ACC</div></div>
+<div class="stat"><div class="k">Market</div><div id="vMarket" class="v">—</div></div>
+<div class="stat"><div class="k">Signal</div><div id="vSignal" class="v">WAIT</div></div>
+<div class="stat"><div class="k">Stake</div><div id="vStake" class="v">$1.00</div></div>
+<div class="stat"><div class="k">Session P/L</div><div id="vPL" class="v">$0.00</div></div>
+<div class="stat"><div class="k">Wins / Losses</div><div id="vWL" class="v">0 / 0</div></div>
+<div class="stat"><div class="k">Loss streak</div><div id="vLS" class="v">0</div></div><div class="stat"><div class="k">Max loss streak reached</div><div id="vMaxLS" class="v">0</div></div>
+<div class="stat"><div class="k">Contract</div><div id="vContract" class="v">—</div></div><div class="stat"><div class="k">Trading</div><div id="vTrading" class="v">WAIT</div></div>
+</div><div style="margin-top:12px"><canvas id="chart" width="850" height="125"></canvas></div>
+<div class="note" style="margin-top:7px">Contract monitor only: graph locks to the actual traded market from OPEN → CLOSE and stays there until the next contract opens.</div></section>
+
+<section class="card"><h2>Scanner</h2><table><thead><tr><th>Market</th><th>Mode</th><th>Condition</th><th>Rank</th></tr></thead><tbody id="scan"></tbody></table></section>
+<section class="card"><h2>5. Trade history</h2>
+<div class="note" style="margin-bottom:9px">Completed contracts from this browser session.</div>
+<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Time</th><th>Mode</th><th>Market</th><th>Stake</th><th>Result</th><th>P/L</th><th>Contract</th></tr></thead><tbody id="history"><tr><td colspan="8">No completed trades yet.</td></tr></tbody></table></div>
+<div class="row"><button id="downloadCsv" class="secondary">DOWNLOAD CSV</button><button id="clearHistory" class="danger">CLEAR HISTORY</button></div>
+</section>
+</div>
+
+<script>
+const API="https://api.derivws.com", PUBLIC_WS="wss://api.derivws.com/trading/v1/options/ws/public";
+window.addEventListener("error",e=>{const s=document.getElementById("status");if(s)s.textContent="JS ERROR — "+(e.message||"Unknown error")+" @ line "+(e.lineno||"?")});
+window.addEventListener("unhandledrejection",e=>{const s=document.getElementById("status");if(s)s.textContent="PROMISE ERROR — "+(e.reason?.message||e.reason||"Unknown error")});
+const $=id=>document.getElementById(id), money=n=>"$"+Number(n||0).toFixed(2);
+const S={marketWs:null,tradeWs:null,account:null,currency:"USD",connected:false,running:false,inTrade:false,req:10,treq:1000,
+symbols:new Map(),ticks:new Map(),candidates:[],stake:1,pl:0,w:0,l:0,lossStreak:0,maxLossStreak:0,active:null,lastLost:null,waitLeft:0,openMark:null,closeMark:null,graphCode:null,graphLabel:"Waiting for contract",discovered:{accu:0,digits:0,rf:0},history:[]};
+const pools={
+ digits:[/Jump 10 Index/i,/Jump 25 Index/i,/Jump 50 Index/i,/Jump 75 Index/i],
+ rf:[/Bull Market Index/i,/Bear Market Index/i,/Step 100 Index/i,/Step 200 Index/i,/Step 300 Index/i,/Step 400 Index/i,/Step 500 Index/i],
+ accu:[/Volatility 10/i,/Volatility 15/i,/Volatility 25/i,/Volatility 30/i,/Volatility 50/i,/Volatility 75/i,/Volatility 90/i,/Volatility 100/i]
+};
+function say(x){$("status").textContent=x}
+function nextReq(){return ++S.req} function nextT(){return ++S.treq}
+function msend(o){if(S.marketWs?.readyState===1)S.marketWs.send(JSON.stringify(o))}
+function tsend(o){if(S.tradeWs?.readyState===1)S.tradeWs.send(JSON.stringify(o))}
+function derivError(j,status){const e=Array.isArray(j?.errors)&&j.errors.length?j.errors[0]:null;return (e?.code||j?.error?.code||("HTTP_"+status))+": "+(e?.message||e?.detail?.message||j?.error?.message||j?.message||("HTTP "+status))}
+async function api(path,method="GET"){const pat=$("pat").value.trim(),app=$("appId").value.trim();if(!app)throw Error("APP_ID_MISSING: Enter your new Deriv API App ID.");if(!pat)throw Error("PAT_MISSING: Enter your Deriv Personal Access Token.");let r;try{r=await fetch(API+path,{method,mode:"cors",cache:"no-store",headers:{"Authorization":"Bearer "+pat,"Deriv-App-ID":app,"Accept":"application/json","Content-Type":"application/json"}})}catch(e){throw Error("NETWORK_OR_CORS: "+e.message)}let j={};try{j=await r.json()}catch{throw Error("HTTP_"+r.status+": Deriv returned a non-JSON response.")}if(!r.ok||j?.errors?.length)throw Error(derivError(j,r.status));return j}
+async function connectAll(){try{$("connect").disabled=true;S.connected=false;$("pill").textContent="Connecting…";say("Step 1/4 — opening Deriv public market WebSocket…");if(S.marketWs)try{S.marketWs.close()}catch{};if(S.tradeWs)try{S.tradeWs.close()}catch{};
+ await new Promise((res,rej)=>{S.marketWs=new WebSocket(PUBLIC_WS);let done=false,t=setTimeout(()=>{if(!done){done=true;rej(Error("PUBLIC_WS_TIMEOUT: public WebSocket did not open."))}},12000);S.marketWs.onopen=()=>{if(done)return;done=true;clearTimeout(t);S.marketWs.onmessage=onMarket;S.marketWs.onclose=()=>{S.connected=false;$("pill").textContent="Disconnected"};msend({active_symbols:"brief",req_id:nextReq()});res()};S.marketWs.onerror=()=>{if(!done){done=true;clearTimeout(t);rej(Error("PUBLIC_WS_ERROR: browser could not open Deriv public WebSocket."))}}});
+ say("Step 2/4 — validating App ID + PAT and reading Options accounts…");const a=await api("/trading/v1/options/accounts"),want=$("accountMode").value,list=Array.isArray(a?.data)?a.data:(a?.data?[a.data]:[]),matches=list.filter(x=>String(x.account_type||"").toLowerCase()===want&&String(x.status||"active").toLowerCase()==="active");if(!matches.length)throw Error("ACCOUNT_NOT_FOUND: No active "+want+" Options account returned.");S.account=matches.find(x=>String(x.currency||"").toUpperCase()==="USD")||matches[0];S.currency=S.account.currency||"USD";
+ say("Step 3/4 — requesting one-time authenticated WebSocket URL…");const o=await api("/trading/v1/options/accounts/"+encodeURIComponent(S.account.account_id)+"/otp","POST"),url=o?.data?.url||o?.data?.websocket_url||o?.data?.websocketUrl||o?.data?.ws_url;if(!url)throw Error("OTP_URL_MISSING: Deriv returned no WebSocket URL.");
+ say("Step 4/4 — opening authenticated "+want.toUpperCase()+" WebSocket…");await new Promise((res,rej)=>{S.tradeWs=new WebSocket(url);let done=false,t=setTimeout(()=>{if(!done){done=true;rej(Error("AUTH_WS_TIMEOUT: authenticated WebSocket did not open."))}},12000);S.tradeWs.onopen=()=>{if(done)return;done=true;clearTimeout(t);S.tradeWs.onmessage=onTrade;res()};S.tradeWs.onerror=()=>{if(!done){done=true;clearTimeout(t);rej(Error("AUTH_WS_ERROR: authenticated WebSocket failed; reconnect for a fresh OTP."))}};S.tradeWs.onclose=()=>{if(S.connected){S.connected=false;$("pill").textContent="Disconnected";say("Authenticated WebSocket closed. Press CONNECT for a fresh OTP.")}}});
+ S.connected=true;$("pill").textContent="Connected "+want.toUpperCase();say("CONNECTED — "+S.account.account_id+" / "+S.currency+". Market discovery active.");
+ }catch(e){S.connected=false;$("pill").textContent="Connection failed";say("CONNECT FAILED — "+e.message)}finally{$("connect").disabled=false}}
+function eligibleName(name,mode){return pools[mode].some(r=>r.test(name))}
+function onMarket(ev){let d;try{d=JSON.parse(ev.data)}catch{return}
+ if(d.error){say("MARKET API ERROR — "+(d.error.message||d.error.code||"Unknown error"));return}
+ if(d.msg_type==="active_symbols"){
+  S.symbols.clear();S.discovered={accu:0,digits:0,rf:0};
+  for(const x of d.active_symbols||[]){
+    const code=x.underlying_symbol||x.symbol;
+    const name=x.underlying_symbol_name||x.display_name||code;
+    if(!code||!name)continue;
+    S.symbols.set(code,{code,name,pip_size:Number(x.pip_size||x.pip||0)});
+    const groups=Object.keys(pools).filter(k=>eligibleName(name,k));
+    if(groups.length){
+      groups.forEach(k=>S.discovered[k]++);
+      msend({ticks_history:code,count:120,end:"latest",style:"ticks",req_id:nextReq()});
+      msend({ticks:code,subscribe:1,req_id:nextReq()});
+    }
+  }
+  say("MARKETS LOADED — ACC "+S.discovered.accu+" | DIGITS "+S.discovered.digits+" | RF "+S.discovered.rf);
+  evaluate();
+ }
+ if(d.msg_type==="history"){const code=d.echo_req?.ticks_history;if(code){const arr=(d.history?.prices||[]).map(Number);S.ticks.set(code,arr.slice(-150));evaluate()}}
+ if(d.msg_type==="tick"){const code=d.tick?.symbol, q=Number(d.tick?.quote);if(code&&Number.isFinite(q)){let a=S.ticks.get(code)||[];a.push(q);if(a.length>180)a=a.slice(-180);S.ticks.set(code,a);if(S.waitLeft>0)S.waitLeft--;
+if(S.active&&S.active.code===code){
+  S.active.tickLog=S.active.tickLog||[];
+  S.active.tickLog.push({time:new Date().toISOString(),price:q});
+}
+evaluate();if(S.graphCode===code)drawGraph()}}
+}
+function ema(a,n=20){if(a.length<n)return NaN;let k=2/(n+1),e=a[a.length-n];for(let i=a.length-n+1;i<a.length;i++)e=a[i]*k+e*(1-k);return e}
+function rsi(a,n=14){if(a.length<n+1)return NaN;let g=0,l=0;for(let i=a.length-n;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}if(l===0)return 100;let rs=(g/n)/(l/n);return 100-100/(1+rs)}
+function bb(a){if(a.length<20)return null;let x=a.slice(-20),m=x.reduce((s,v)=>s+v,0)/20,sd=Math.sqrt(x.reduce((s,v)=>s+(v-m)**2,0)/20);return{m,u:m+2*sd,l:m-2*sd,w:4*sd}}
+function bbRank(a){if(a.length<60)return null;let widths=[];for(let i=20;i<=a.length;i++){let z=bb(a.slice(0,i));if(z)widths.push(z.w)}let b=bb(a), med=[...widths.slice(-40)].sort((x,y)=>x-y)[Math.floor(Math.min(39,widths.length-1)/2)]||b.w;
+ let ratio=b.w/(med||b.w||1), half=b.w/2||1, center=Math.abs(a.at(-1)-b.m)/half, prev=widths.at(-4)||b.w, expand=(b.w-prev)/(prev||1);
+ let safe=ratio<=Number($("squeezeRatio").value)&&center<=Number($("centerMax").value)&&expand<=Number($("expandMax").value);
+ let rank=Math.max(0,100-(ratio*35+center*35+Math.max(0,expand)*200));return{safe,rank,b,ratio,center,expand}}
+function lastDigit(v,code){const meta=S.symbols.get(code)||{},pip=Number(meta.pip_size||0);let dp=0;if(pip>0&&pip<1)dp=Math.max(0,Math.round(-Math.log10(pip)));const txt=Number(v).toFixed(dp);return Number(txt.replace(".","").slice(-1))}
+function digitSignal(a,code){let n=Number($("digitWindow").value)||2;if(a.length<n)return null;let ds=a.slice(-n).map(v=>lastDigit(v,code)),p=ds.map(d=>d%2);if(!p.every(x=>x===p[0]))return null;return{sig:p[0]===0?"ODD":"EVEN",rank:70+n*3}}
+function rfSignal(a){if(a.length<25)return null;let e=ema(a,20),r=rsi(a,Number($("rsiPeriod").value)||14),p=a.at(-1);if(p>e&&r>50)return{sig:"RISE",rank:Math.min(99,60+(r-50)+Math.min(20,Math.abs(p-e)/(Math.abs(e)||1)*10000))};if(p<e&&r<50)return{sig:"FALL",rank:Math.min(99,60+(50-r)+Math.min(20,Math.abs(p-e)/(Math.abs(e)||1)*10000))};return null}
+function mode(){return $("mode").value}
+function evaluate(){let md=mode(),c=[];for(const [code,x] of S.symbols){if(!eligibleName(x.name,md))continue;let a=S.ticks.get(code)||[],z=null;
+ if(md==="accu"){let b=bbRank(a);if(b)z={sig:b.safe?"BB SAFE":"BB UNSAFE",rank:b.rank,safe:b.safe,bb:b}}
+ else if(md==="digits")z=digitSignal(a,code);else z=rfSignal(a);
+ if(z)c.push({code,name:x.name,...z})}
+ c.sort((a,b)=>(b.safe===true)-(a.safe===true)||b.rank-a.rank);S.candidates=c;renderScan();
+ let best=c.find(x=>md!=="accu"||x.safe);if(best){$("vMarket").textContent=best.name.replace(" Index","");$("vSignal").textContent=best.sig;if(md==="accu"){$("bbSafe").className="safeBox"+(best.safe?"":" unsafe");$("bbSafe").textContent=best.safe?"SAFE — Bollinger squeeze/center conditions qualify":"⚠ BB UNSAFE — consider exit";}}
+ if(S.running&&!S.inTrade&&S.waitLeft<=0&&best)maybeTrade(best)
+}
+function renderScan(){$("scan").innerHTML=S.candidates.slice(0,10).map(x=>`<tr><td>${x.name}</td><td>${mode().toUpperCase()}</td><td>${x.sig}</td><td>${Math.round(x.rank)}</td></tr>`).join("")||'<tr><td colspan="4">Waiting for data…</td></tr>'}
+function switchEnabled(md){return $(md==="accu"?"accSwitch":md==="digits"?"digitSwitch":"rfSwitch").checked}
+function maybeTrade(c){if(S.active||!S.connected)return;if(S.lastLost&&switchEnabled(mode())&&c.code===S.lastLost){let alt=S.candidates.find(x=>x.code!==S.lastLost&&(mode()!=="accu"||x.safe));if(alt)c=alt;else return}
+ place(c).catch(e=>say("Trade not placed: "+e.message))}
+async function place(c){S.inTrade=true;let md=mode(),ct,dur;
+ if(md==="accu"){ct="ACCU";dur=undefined}else if(md==="digits"){ct=c.sig==="EVEN"?"DIGITEVEN":"DIGITODD";dur=Number($("digitDuration").value)||1}else{ct=c.sig==="RISE"?"CALL":"PUT";dur=Number($("rfDuration").value)||6}
+ let req={proposal:1,amount:S.stake,basis:"stake",contract_type:ct,currency:S.currency,underlying_symbol:c.code,req_id:nextT()};
+ if(md==="accu"){req.growth_rate=Number($("accGrowth").value);req.limit_order={take_profit:S.stake*(Number($("accTarget").value)||0.50)}}
+ else{req.duration=dur;req.duration_unit="t"}
+ S.pending={kind:"proposal",c,md,req};tsend(req);say("Requesting verified Deriv proposal…")}
+function onTrade(ev){let d;try{d=JSON.parse(ev.data)}catch{return}
+ if(d.error){say("Deriv: "+(d.error.message||d.error.code));S.inTrade=false;S.pending=null;return}
+ if(d.msg_type==="proposal"&&S.pending?.kind==="proposal"){let p=d.proposal;if(!p?.id){S.inTrade=false;return}S.pending={...S.pending,kind:"buy"};tsend({buy:p.id,price:Number(p.ask_price||S.stake)*1.02,req_id:nextT()})}
+ else if(d.msg_type==="buy"&&S.pending?.kind==="buy"){let id=d.buy?.contract_id;if(!id){S.inTrade=false;return}let c=S.pending.c;{
+let arr=S.ticks.get(c.code)||[], entryPrice=Number(arr.at(-1)), md=S.pending.md;
+let entryEMA=md==="rf"?ema(arr,20):null, entryRSI=md==="rf"?rsi(arr,Number($("rsiPeriod").value)||14):null;
+let entryBB=md==="accu"?bbRank(arr):null;
+S.active={id,code:c.code,name:c.name,md,stake:S.stake,signal:c.sig,duration:S.pending.req.duration||null,
+growth:S.pending.req.growth_rate||null,entryTime:new Date().toISOString(),entryPrice,
+entryEMA:Number.isFinite(entryEMA)?entryEMA:null,entryRSI:Number.isFinite(entryRSI)?entryRSI:null,
+entryBBRatio:entryBB?.ratio??null,entryBBCenter:entryBB?.center??null,entryBBExpand:entryBB?.expand??null,
+tickLog:[{time:new Date().toISOString(),price:entryPrice}],exitArmed:md==="accu",exitTarget:md==="accu"?Number((S.stake*(Number($("accTarget").value)||0.50)).toFixed(2)):null,exitSellSent:false};
+}S.graphCode=c.code;S.openMark=(S.ticks.get(c.code)||[]).at(-1);S.closeMark=null;const tradeText=S.active.md==="rf"?(c.sig+" • "+S.active.duration+" TICKS • "+money(S.active.stake)):S.active.md==="digits"?(c.sig+" • "+S.active.duration+" TICK"+(S.active.duration===1?"":"S")+" • "+money(S.active.stake)):("ACCUMULATOR • "+Math.round((S.active.growth||0)*100)+"% • "+money(S.active.stake));S.graphLabel=c.name.replace(" Index","")+" • "+tradeText;$("vTrading").textContent=tradeText;$("vContract").textContent=String(id);drawGraph();$("approveExit").disabled=true;if(S.active.md==="accu")$("approveExit").textContent="AUTO TP "+money(S.active.exitTarget)+" ACTIVE";tsend({proposal_open_contract:1,contract_id:id,subscribe:1,req_id:nextT()});S.pending=null;say("Contract OPEN — "+c.name)}
+ else if(d.msg_type==="proposal_open_contract"&&S.active&&String(d.proposal_open_contract?.contract_id)===String(S.active.id)){let c=d.proposal_open_contract,profit=Number(c.profit||0);if(c.current_spot!=null)drawGraph();
+  if(S.active.exitArmed&&!S.active.exitSellSent&&profit>=Number(S.active.exitTarget||0)){
+    S.active.exitSellSent=true;
+    say("AUTO BOLLINGER TP HIT — "+money(profit)+" ≥ "+money(S.active.exitTarget)+". Selling…");
+    tsend({sell:S.active.id,price:0,req_id:nextT()});
+  }
+  if(c.is_sold||["won","lost","sold"].includes(String(c.status||"").toLowerCase()))settle(profit,c)}
+ else if(d.msg_type==="sell"&&S.active){say("Auto Bollinger take-profit sell submitted.");}
+}
+function renderHistory(){
+ const body=$("history");
+ if(!S.history.length){body.innerHTML='<tr><td colspan="8">No completed trades yet.</td></tr>';return}
+ body.innerHTML=[...S.history].reverse().map((h,i)=>`<tr><td>${S.history.length-i}</td><td>${h.time}</td><td>${h.mode}</td><td>${h.market}</td><td>${money(h.stake)}</td><td class="${h.profit>0?"good":"bad"}">${h.result}</td><td class="${h.profit>0?"good":"bad"}">${money(h.profit)}</td><td>${h.contract}</td></tr>`).join("");
+}
+function csvCell(v){return '"'+String(v??"").replaceAll('"','""')+'"'}
+function downloadHistory(){
+ const cols=["No","Close Time","Mode","Market","Signal","Stake","Result","Profit","Contract ID","Entry Time","Entry Price","Close Price","Duration Ticks","Growth Rate","EMA20 Entry","RSI Entry","BB Width Ratio","BB Center Distance","BB Expansion","Exit Armed","Exit Target Profit","Tick Count","Tick Path"];
+ const rows=S.history.map((h,i)=>[i+1,h.time,h.mode,h.market,h.signal,h.stake,h.result,h.profit,h.contract,h.entryTime,h.entryPrice,h.closePrice,h.duration,h.growth,h.entryEMA,h.entryRSI,h.entryBBRatio,h.entryBBCenter,h.entryBBExpand,h.exitArmed,h.exitTarget,h.tickCount,JSON.stringify(h.tickLog||[])]);
+ const csv=[cols,...rows].map(r=>r.map(csvCell).join(",")).join("\r\n");
+ const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="roman-trade-history-"+new Date().toISOString().slice(0,10)+".csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function settle(profit,c){let a=S.active;if(!a)return;S.pl+=profit;S.closeMark=Number(c.exit_spot??c.current_spot??(S.ticks.get(a.code)||[]).at(-1));let win=profit>0;
+ if(win){S.w++;S.lossStreak=0;S.stake=Number($("baseStake").value)||1;S.lastLost=null}else{S.l++;S.lossStreak++;S.maxLossStreak=Math.max(S.maxLossStreak,S.lossStreak);S.lastLost=a.code;S.stake=Math.min(Number($("maxStake").value)||400,a.stake*(Number($("mult").value)||2))}
+ S.history.push({time:new Date().toISOString(),mode:a.md.toUpperCase(),market:a.name,signal:a.signal,stake:a.stake,result:win?"WIN":"LOSS",profit:Number(profit||0),contract:a.id,
+ entryTime:a.entryTime,entryPrice:a.entryPrice,closePrice:S.closeMark,duration:a.duration,growth:a.growth,entryEMA:a.entryEMA,entryRSI:a.entryRSI,
+ entryBBRatio:a.entryBBRatio,entryBBCenter:a.entryBBCenter,entryBBExpand:a.entryBBExpand,exitArmed:a.exitArmed,exitTarget:a.exitTarget,
+ tickCount:(a.tickLog||[]).length,tickLog:a.tickLog||[]});
+ renderHistory();
+ S.active=null;S.inTrade=false;$("approveExit").disabled=true;$("approveExit").textContent="AUTO TP 0.50× ACTIVE";$("vContract").textContent="—";let md=a.md;S.waitLeft=Number($(md==="accu"?"accWait":md==="digits"?"digitWait":"rfWait").value)||0;
+ refresh();drawGraph();say((win?"WIN ":"LOSS ")+money(profit)+(win?" — stake reset":" — recovery stake "+money(S.stake)));
+ if(win&&$("cycleMode").value==="single")S.running=false;if(S.pl>=Number($("sessionTP").value)||-S.pl>=Number($("sessionSL").value)||S.lossStreak>=Number($("maxLoss").value))S.running=false;
+}
+function refresh(){$("vStake").textContent=money(S.stake);$("vPL").textContent=money(S.pl);$("vWL").textContent=S.w+" / "+S.l;$("vLS").textContent=S.lossStreak;$("vMaxLS").textContent=S.maxLossStreak;$("vMode").textContent=mode().toUpperCase()}
+function drawGraph(){let cv=$("chart"),x=cv.getContext("2d"),code=S.graphCode;x.clearRect(0,0,cv.width,cv.height);x.font="bold 14px system-ui";x.fillStyle="#eef3f8";x.fillText(S.graphLabel||"Waiting for contract",12,19);if(!code){x.font="12px system-ui";x.fillStyle="#92a0b2";x.fillText("Graph locks to the market when a contract opens.",12,42);return}let ar=(S.ticks.get(code)||[]).slice(-45);if(ar.length<2)return;let mn=Math.min(...ar),mx=Math.max(...ar),span=mx-mn||1,pad=Math.max(span*.30,Math.abs((mn+mx)/2)*.00002,1e-8);mn-=pad;mx+=pad;span=mx-mn;let px=i=>i/(ar.length-1)*(cv.width-20)+10,py=v=>cv.height-10-(v-mn)/span*(cv.height-42);x.strokeStyle="#63b3ed";x.lineWidth=2;x.beginPath();ar.forEach((v,i)=>i?x.lineTo(px(i),py(v)):x.moveTo(px(i),py(v)));x.stroke();const mark=(v,t,col)=>{if(v==null)return;let y=py(v);x.fillStyle=col;x.fillRect(8,y-1,cv.width-16,2);x.font="bold 11px system-ui";x.fillText(t,12,Math.max(34,y-5))};mark(S.openMark,"OPEN","#31c48d");mark(S.closeMark,"CLOSE","#ff6677")}
+$("connect").onclick=()=>{say("CONNECT CLICK RECEIVED — starting connection…");connectAll()};
+say("V9.8 loaded — automatic Bollinger +0.50× stake profit exit ready.");setInterval(()=>{if(S.marketWs?.readyState===1)msend({ping:1,req_id:nextReq()});if(S.tradeWs?.readyState===1)tsend({ping:1,req_id:nextT()})},30000);$("mode").onchange=()=>{document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));$(mode()).classList.add("active");refresh();evaluate()};
+$("start").onclick=()=>{if(!S.connected)return say("Connect first.");S.stake=Number($("baseStake").value)||1;S.running=true;$("start").textContent="BOT RUNNING";refresh();evaluate();const n=S.discovered[mode()]||0;if(!n)say("BOT ON — 0 "+mode().toUpperCase()+" markets discovered. Check market feed.");else say("BOT ON — "+n+" "+mode().toUpperCase()+" markets loaded; waiting for qualified setup.");};
+$("stop").onclick=()=>{S.running=false;$("start").textContent="START BOT";say("Bot OFF. Existing open contract remains monitored.")};
+$("approveExit").onclick=()=>{};
+$("downloadCsv").onclick=downloadHistory;
+$("clearHistory").onclick=()=>{S.history=[];renderHistory();say("Trade history cleared.")};
+setInterval(()=>{if(S.active)tsend({proposal_open_contract:1,contract_id:S.active.id,req_id:nextT()})},12000);
+refresh();renderHistory();drawGraph();
+</script></body></html>
