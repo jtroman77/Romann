@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111719">
+<meta name="referrer" content="no-referrer">
+<title>Roman Touch · Deriv Bot</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1113;--panel:#141d20;--input:#0d1518;--edge:#2b383c;--text:#f1f5f3;--muted:#9eaead;--mint:#b5efce;--red:#ff999c;--gold:#e9c58e}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button,a,input,select,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}input,select{width:100%;min-width:0;border:1px solid var(--edge);background:var(--input);border-radius:10px;color:var(--text);padding:12px;font-size:16px;outline:none}input:focus,select:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--mint);outline-offset:3px}input:disabled,select:disabled{opacity:.55}input[type=checkbox]{width:19px;height:19px;accent-color:var(--mint)}a{color:var(--mint);text-underline-offset:3px}header{border-bottom:1px solid var(--edge);background:#101719}.wrap{max-width:1160px;margin:auto;padding:22px 26px}.nav{display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{display:flex;gap:11px;align-items:center;font-weight:750;letter-spacing:.03em}.logo{display:grid;place-items:center;width:35px;height:35px;border:1px solid #819c8c;border-radius:11px;color:var(--mint);font-size:21px}.brand small{font-size:10px;letter-spacing:.16em;font-weight:500;color:var(--muted);display:block}.pill{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--edge);border-radius:99px;padding:6px 11px;font-size:11px;letter-spacing:.06em;font-weight:700;white-space:nowrap}.dot{width:6px;height:6px;border-radius:50%;background:currentColor}.muted{color:var(--muted)}.green{color:var(--mint)}.red{color:var(--red)}.gold{color:var(--gold)}.hero{padding-top:30px;display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:22px}.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--mint);text-transform:uppercase;margin:0 0 9px}h1{font-size:clamp(28px,5vw,43px);line-height:1.14;letter-spacing:-.055em;margin:0 0 10px;font-weight:630}h2{font-size:17px;letter-spacing:-.025em;margin:0}h3{font-size:13px;margin:0 0 14px}p{margin:0}.intro{max-width:630px;color:var(--muted);font-size:14px}.hero-mark{width:88px;height:88px;flex-shrink:0;color:var(--mint)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}.stat{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:17px 18px}.stat .label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:8px}.stat strong{font-size:25px;line-height:1.2;font-weight:570;font-variant-numeric:tabular-nums;letter-spacing:-.04em;overflow-wrap:anywhere}.stat small{display:block;font-size:11px;margin-top:5px;color:var(--muted)}.layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:20px;align-items:start}.stack{display:grid;gap:16px;min-width:0}.panel{border:1px solid var(--edge);background:var(--panel);border-radius:16px;overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:20px 21px 15px}.panel-body{padding:0 21px 21px}summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}summary .chev{color:var(--muted);transition:transform .2s}details[open] summary .chev{transform:rotate(180deg)}.section-number{font-size:11px;color:var(--muted);margin-right:10px;font-weight:400;letter-spacing:.06em}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 13px}.full{grid-column:1/-1}label{font-size:12px;font-weight:600;display:block;margin-bottom:6px}.hint{color:var(--muted);font-size:11px;line-height:1.5;margin-top:6px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--edge);border-radius:10px;padding:11px 16px;background:#1c292d;color:var(--text);font-size:13px;font-weight:650}.btn:hover:enabled{border-color:#819c8c}.primary{background:var(--mint);border-color:var(--mint);color:#123024}.danger{color:var(--red);background:#302124;border-color:#664346}.small{padding:7px 10px;font-size:11px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.actions .btn{padding:15px 12px;font-size:15px}.notice{padding:12px 14px;border:1px solid #46544c;background:#18251f;border-radius:10px;font-size:12px;color:#cfe3d7}.notice.warn{border-color:#60513b;background:#28231c;color:var(--gold)}.notice.error{border-color:#72484b;background:#302125;color:var(--red)}.banner{margin-bottom:18px;overflow-wrap:anywhere}.switch{display:flex;gap:9px;align-items:center;font-size:13px}.switch label{margin:0}.divider{border:0;border-top:1px solid var(--edge);margin:20px 0}.mini-line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;padding:8px 0}.mini-line span{color:var(--muted)}.mini-line strong{font-size:13px;font-weight:550;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.market-title{display:flex;align-items:center;gap:10px}.market-icon{height:36px;width:36px;background:#27392f;border-radius:10px;display:grid;place-items:center;color:var(--mint);font-size:21px}.quote-price{font-size:35px;font-weight:500;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1.2}.chart{height:136px;position:relative;margin:12px 0 8px;background:linear-gradient(transparent 32%,#253136 33%,transparent 34%,transparent 65%,#253136 66%,transparent 67%);border-bottom:1px solid var(--edge)}canvas{width:100%;height:100%;display:block}.chart-empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px}.badge{font-size:11px;color:var(--mint);background:#25392e;padding:5px 8px;border-radius:6px}.quote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:15px 0}.quote-grid>div{border:1px solid var(--edge);border-radius:9px;padding:10px 8px;text-align:center}.quote-grid small{display:block;color:var(--muted);font-size:10px}.quote-grid b{font-size:14px;font-weight:550;display:block;margin-top:4px;font-variant-numeric:tabular-nums}.step-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.step-chips span{border:1px solid var(--edge);background:var(--input);padding:6px 10px;border-radius:7px;font-size:12px;font-variant-numeric:tabular-nums}.step-chips span:first-child{border-color:#659679;color:var(--mint)}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:12px;text-align:left;white-space:nowrap}th{font-size:10px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;font-weight:500}td,th{padding:12px 18px;border-bottom:1px solid var(--edge)}td:last-child,th:last-child{text-align:right}.empty{font-size:12px;color:var(--muted);text-align:center;padding:26px 18px}.log{max-height:180px;overflow:auto;font:11px/1.7 ui-monospace,monospace;color:var(--muted);overflow-wrap:anywhere}.log p{padding:6px 0;border-bottom:1px solid #243034}.foot{display:flex;justify-content:space-between;gap:15px;font-size:11px;color:var(--muted);margin:25px 0 12px}.token-wrap{display:flex;gap:7px}.token-wrap .btn{flex-shrink:0;padding:8px 10px}.checkline{margin-top:12px}.lock-msg{font-size:11px;color:var(--gold);margin-top:12px}[hidden]{display:none!important}.subtle-btn{border:0;background:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:11px;cursor:pointer}.connection-status{font-size:12px;min-height:18px;color:var(--muted);margin-top:12px}.nowrap{white-space:nowrap}
+@media(max-width:760px){.wrap{padding:18px 16px}.hero{padding-top:14px;gap:12px}.hero-mark{width:55px;height:55px}.stats{grid-template-columns:1fr 1fr;gap:9px}.stat{padding:13px 14px}.stat strong{font-size:23px}.layout{grid-template-columns:1fr;gap:16px}.hero .intro{font-size:12px}.panel-head{padding:18px 17px 14px}.panel-body{padding:0 17px 18px}.foot{flex-direction:column;gap:5px}.brand{font-size:14px}.pill{font-size:10px}.grid{gap:13px 11px}.actions{position:relative}.stat .label{font-size:10px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav"><div class="brand"><span class="logo">R</span><div>ROMAN TOUCH<small>DERIV AUTOMATION · V1.0</small></div></div><span class="pill muted" id="statusBadge"><span class="dot"></span><span id="statusText">OFFLINE</span></span></div></header>
+<main class="wrap">
+ <section class="hero"><div><p class="eyebrow">One touch. One contract at a time.</p><h1>Your touch trading desk.</h1><p class="intro">Set your barrier. Run your cycle. Martingale after a loss, reset after a win.</p></div><svg class="hero-mark" viewBox="0 0 90 90" fill="none" aria-hidden="true"><circle cx="45" cy="45" r="43" stroke="currentColor" opacity=".25"/><path d="M15 56h60" stroke="currentColor" stroke-dasharray="3 5" opacity=".4"/><path d="M18 68l14-17 10 7 13-26 16 9" stroke="currentColor" stroke-width="2"/><circle cx="55" cy="32" r="5" fill="currentColor"/><circle cx="55" cy="32" r="12" stroke="currentColor" opacity=".4"/></svg></section>
+ <div id="banner" class="notice banner" role="status" aria-live="polite">Enter your Deriv App ID and token to load your accounts.</div>
+ <div class="stats"><div class="stat"><span class="label">Account balance</span><strong id="balance">—</strong><small id="accountLabel">No account connected</small></div><div class="stat"><span class="label">Session profit</span><strong id="pnl">0.00</strong><small id="currencyLabel">Account currency</small></div><div class="stat"><span class="label">Next stake</span><strong id="nextStake">1.00</strong><small id="streak">0 consecutive losses</small></div><div class="stat"><span class="label">Wins / losses</span><strong id="winLoss">0 / 0</strong><small id="tradeCount">0 settled contracts</small></div></div>
+ <div class="layout">
+  <div class="stack">
+   <details class="panel" id="connection" open><summary class="panel-head"><h2><span class="section-number">01</span>Connect account</h2><span class="chev">⌄</span></summary><div class="panel-body">
+    <div class="grid"><div class="full"><label for="appId">Deriv App ID</label><input id="appId" autocomplete="off" placeholder="Your Romanx App ID" spellcheck="false"></div><div class="full"><label for="token">Personal Access Token</label><div class="token-wrap"><input id="token" type="password" autocomplete="off" placeholder="Paste your token with Trade permission" spellcheck="false"><button id="showToken" class="btn" type="button" aria-label="Show token">Show</button></div><p class="hint">Token stays in this tab's memory and is sent only to Deriv. It is never saved in this file.</p></div><div class="full"><button id="loadAccounts" class="btn" type="button">1 · Load accounts</button></div><div class="full"><label for="account">Options account</label><select id="account"><option value="">Load accounts first</option></select></div></div>
+    <div class="row" style="margin-top:13px"><button id="connect" class="btn primary" disabled>2 · Connect selected account</button><button id="disconnect" class="btn" disabled>Disconnect</button></div><p class="connection-status" id="connectionText">Demo is selected first when available.</p><p class="hint">Use your existing PAT app from <a href="https://developers.deriv.com/" target="_blank" rel="noopener noreferrer">Deriv Developers</a>.</p>
+   </div></details>
+   <section class="panel"><div class="panel-head"><h2><span class="section-number">02</span>Trade settings</h2><span class="badge">TOUCH ONLY</span></div><div class="panel-body"><div class="grid" id="tradeSettings">
+    <div class="full"><label for="symbol">Market</label><select id="symbol" data-setting><option value="RDBULL">Bull Market Index</option><option value="RDBEAR">Bear Market Index</option></select><p class="hint" id="marketHint">Available Touch markets load after connecting.</p></div>
+    <div><label for="barrier">Barrier offset</label><input id="barrier" value="+1.3295" inputmode="text" autocomplete="off" data-setting><p class="hint">+ above entry · − below entry</p></div><div><label for="duration">Duration (minutes)</label><input id="duration" value="2" type="number" min="2" step="1" inputmode="numeric" data-setting><p class="hint">Minimum 2 minutes</p></div>
+    <div><label for="initial">Initial stake</label><input id="initial" value="1" type="number" min="0.01" step="any" inputmode="decimal" data-setting></div><div><label for="multiplier">Loss multiplier</label><input id="multiplier" value="3" type="number" min="1.01" step="any" inputmode="decimal" data-setting></div>
+    <div><label for="wait">Wait between trades (sec)</label><input id="wait" value="0" type="number" min="0" step="1" inputmode="numeric" data-setting></div><div><label for="afterWin">After a win</label><select id="afterWin" data-setting><option value="continue">Reset &amp; continue</option><option value="stop">Reset &amp; stop</option></select></div>
+    <div class="full switch"><input id="martingale" type="checkbox" checked data-setting><label for="martingale">Martingale after each confirmed loss</label></div>
+   </div><div class="step-chips" id="stakeSteps" aria-label="First five stake levels"></div><p class="hint" id="progressionHint">Default sequence: 1 → 3 → 9 → 27 → 81.</p><p class="lock-msg" id="settingsLocked" hidden>Settings are locked until the current contract settles and the bot stops.</p></div></section>
+   <details class="panel"><summary class="panel-head"><h2><span class="section-number">03</span>Money management</h2><span class="chev">⌄</span></summary><div class="panel-body"><p class="hint" style="margin:0 0 14px">Optional limits. 0 = off. The bot stops before buying if the next stake would exceed a limit or your balance.</p><div class="grid"><div><label for="maxStake">Maximum stake</label><input id="maxStake" type="number" min="0" step="any" value="0" inputmode="decimal" data-setting></div><div><label for="takeProfit">Session take profit</label><input id="takeProfit" type="number" min="0" step="any" value="0" inputmode="decimal" data-setting></div><div><label for="stopLoss">Session loss limit</label><input id="stopLoss" type="number" min="0" step="any" value="0" inputmode="decimal" data-setting></div><div><label for="maxLosses">Maximum consecutive losses</label><input id="maxLosses" type="number" min="0" step="1" value="0" inputmode="numeric" data-setting></div></div><hr class="divider"><p class="hint">Martingale can grow the stake rapidly and exhaust the balance. A win does not guarantee full recovery when payouts change or the multiplier is too low.</p></div></details>
+  </div>
+  <div class="stack">
+   <section class="panel"><div class="panel-head"><div class="market-title"><span class="market-icon">↗</span><div><h2 id="marketName">Bull Market Index</h2><p class="hint" id="tickTime">Waiting for connection</p></div></div><span class="badge" id="accountBadge">NO ACCOUNT</span></div><div class="panel-body">
+    <div class="quote-price" id="spot">—</div><div class="chart"><canvas id="chart" aria-label="Recent live price ticks"></canvas><div class="chart-empty" id="chartEmpty">Live prices appear here</div></div>
+    <div class="quote-grid"><div><small>CONTRACT</small><b>Touch</b></div><div><small>BARRIER OFFSET</small><b id="barrierSummary">+1.3295</b></div><div><small>DURATION</small><b id="durationSummary">2 minutes</b></div></div>
+    <div class="mini-line"><span>Quoted payout</span><strong id="payout">—</strong></div><div class="mini-line"><span>Profit if this trade wins</span><strong id="quoteProfit">—</strong></div><div class="mini-line"><span>Cycle losses to recover</span><strong id="cycleLoss">0.00</strong></div><p class="hint" id="quoteHint">Check quote to see the current price and payout. Each trade uses a fresh quote.</p>
+    <button class="btn" id="preview" style="width:100%;margin-top:12px" disabled>Check quote · no purchase</button><div class="actions"><button class="btn primary" id="start" disabled>Start bot</button><button class="btn danger" id="stop" disabled>Stop bot</button></div><p class="hint">Stop prevents the next purchase. A contract already bought remains open until Deriv settles it.</p>
+   </div></section>
+   <section class="panel"><div class="panel-head"><h2>Current contract</h2><span class="badge" id="contractStatus">IDLE</span></div><div class="panel-body"><div class="mini-line"><span>Contract ID</span><strong id="contractId">—</strong></div><div class="mini-line"><span>Stake / payout</span><strong id="contractMoney">—</strong></div><div class="mini-line"><span>Entry / barrier level</span><strong id="contractLevels">—</strong></div><div class="mini-line"><span>Time remaining</span><strong id="remaining">—</strong></div><div class="mini-line"><span>Live / final profit</span><strong id="contractProfit">—</strong></div><p class="hint" id="contractNote">The next trade waits for a confirmed settlement.</p></div></section>
+   <section class="panel" id="recoveryPanel" hidden><div class="panel-head"><h2 class="gold">Check previous purchase</h2></div><div class="panel-body"><p class="hint" id="recoveryText">A purchase was sent but its result is unknown. New trades are blocked. Check Deriv Reports for its contract ID.</p><label for="recoveryId" style="margin-top:14px">Contract ID from Deriv</label><input id="recoveryId" inputmode="numeric" placeholder="Contract ID"><button class="btn" id="recover" style="margin-top:10px">Track this contract</button><hr class="divider"><button class="subtle-btn" id="clearPending">I checked Deriv Reports: no contract was purchased</button></div></section>
+   <section class="panel"><div class="panel-head"><h2>Trade history</h2><button class="subtle-btn" id="reset">Reset session</button></div><div class="table-wrap"><table><thead><tr><th>Time · WAT</th><th>Result</th><th>Stake</th><th>Profit</th></tr></thead><tbody id="history"></tbody></table><p id="emptyHistory" class="empty">Your settled contracts will appear here.</p></div></section>
+   <details class="panel"><summary class="panel-head"><h2>Activity log</h2><span class="chev">⌄</span></summary><div class="panel-body log" id="log" aria-live="polite"></div></details>
+  </div>
+ </div>
+ <footer class="foot"><span>Keep this page open and your device awake. Mobile browsers may pause background tabs.</span><span>ROMAN TOUCH · V1.0</span></footer>
+</main>
+<noscript><p class="notice error">Enable JavaScript to use this bot.</p></noscript>
+<script>
+(() => {
+'use strict';
+// Single-file client. No token persistence, external scripts, analytics, or automatic start.
+// Current Deriv Options API: REST PAT -> one-use OTP -> authenticated WebSocket.
+const $ = id => document.getElementById(id);
+const API = 'https://api.derivws.com/trading/v1/options';
+const PREFIX = 'roman_touch_v1_';
+const defaults = {symbol:'RDBULL',barrier:'+1.3295',duration:2,initial:1,multiplier:3,wait:0,afterWin:'continue',martingale:true,maxStake:0,takeProfit:0,stopLoss:0,maxLosses:0};
+const settingIds = Object.keys(defaults);
+const timeFormat = new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+let rpc=null,connected=false,connecting=false,loading=false,busy=false,running=false,runId=0;
+let accounts=[],account=null,credentials=null,releaseLock=null,lockedAccount=null;
+let balance=null,currency='USD',precision=2,session=null,lastContract=null,lastQuote=null;
+let nextTimer=null,pollTimer=null,heartbeat=null,pollBusy=false,wakeLock=null;
+let tickSubscription=null,contractSubscription=null,ticks=[],latestTick=null,marketGeneration=0;
+let storageFailure=false,corruptJournal=false;
+const logs=[];
+const number = v => v===null||v===undefined||v==='' ? NaN : Number(v);
+const money = v => Number.isFinite(v) ? v.toLocaleString('en-US',{minimumFractionDigits:precision,maximumFractionDigits:precision}) : '—';
+const amountText = v => money(v)+' '+currency;
+const round = v => Number(Number(v).toFixed(precision));
+const ceil = v => Math.ceil((v-1e-10)*10**precision)/10**precision;
+const validId = v => /^\d+$/.test(String(v)) && Number.isSafeInteger(Number(v)) && Number(v)>0;
+const emptySession = () => ({version:1,pnl:0,wins:0,losses:0,flat:0,streak:0,cycleLoss:0,nextStake:number($('initial').value)||1,active:null,intent:null,history:[]});
+function safeMessage(e) {
+ let s=String(e?.message||e||'Unknown error');
+ for(const secret of [credentials?.token,$('token').value]) if(secret) s=s.split(secret).join('[hidden]');
+ return s.replace(/(?:wss|https):\/\/[^\s"']*otp=[^\s"']*/gi,'[Deriv connection]').slice(0,600);
+}
+function log(message,type='') {logs.unshift({time:timeFormat.format(new Date()),message:safeMessage(message),type});logs.length=Math.min(logs.length,100);$('log').replaceChildren(...logs.map(x=>{const p=document.createElement('p');p.textContent=x.time+' · '+x.message;p.className=x.type;return p;}));}
+function banner(message,kind='') {$('banner').textContent=message;$('banner').className='notice banner '+kind;}
+function status(label,kind='muted') {$('statusText').textContent=label;$('statusBadge').className='pill '+kind;}
+function storageKey(){return PREFIX+'session_'+account.id;}
+function saveSession() {
+ if(!account||!session) return true;
+ try{localStorage.setItem(storageKey(),JSON.stringify(session));return true;}
+ catch{storageFailure=true;running=false;runId++;clearTimeout(nextTimer);banner('Browser storage is unavailable. New purchases are blocked; allow site storage, then reload and reconnect.','error');log('Could not save the trade journal. Automation paused.','red');return false;}
+}
+function loadSession() {
+ corruptJournal=false;storageFailure=false;session=emptySession();lastContract=null;
+ try{
+  const raw=localStorage.getItem(storageKey());if(!raw) return;
+  const s=JSON.parse(raw);
+  if(s.version!==1 || !['pnl','wins','losses','flat','streak','cycleLoss','nextStake'].every(k=>Number.isFinite(s[k])) || s.nextStake<=0 || !Array.isArray(s.history)) throw new Error('Invalid journal');
+  if(s.active && (!validId(s.active.id)||!s.active.cfg)) throw new Error('Invalid active contract');
+  if(s.intent && (!s.intent.cfg||!s.intent.proposalId||!Number.isFinite(s.intent.created))) throw new Error('Invalid pending purchase');
+  session=s;
+  if(s.active?.cfg) putSettings(s.active.cfg);else if(s.intent?.cfg) putSettings(s.intent.cfg);
+ }catch{corruptJournal=true;banner('Saved session data could not be read. Trading is blocked. Check Deriv Reports before clearing this site’s stored data.','error');log('Invalid saved session. No orders will be placed.','red');}
+}
+function saveSettings(){try{const values={};for(const k of settingIds)values[k]=$(k).type==='checkbox'?$(k).checked:$(k).value;localStorage.setItem(PREFIX+'settings',JSON.stringify(values));localStorage.setItem(PREFIX+'appId',$('appId').value.trim());}catch{}}
+function putSettings(s){for(const k of settingIds)if(s[k]!==undefined){if(k==='symbol'&&![...$('symbol').options].some(o=>o.value===s[k]))$('symbol').add(new Option(s[k],s[k]));if($(k).type==='checkbox')$(k).checked=!!s[k];else $(k).value=s[k];}}
+function config(){
+ const c={};for(const k of settingIds)c[k]=$(k).type==='checkbox'?$(k).checked:$(k).value;
+ c.barrier=c.barrier.trim().replace('−','-');
+ if(!/^[+-]\d+(?:\.\d+)?$/.test(c.barrier)||!Number.isFinite(Number(c.barrier))||Number(c.barrier)===0)throw new Error('Enter a non-zero signed barrier, for example +1.3295 or -1.3295.');
+ if(c.barrier.length>20)throw new Error('Barrier is too long.');
+ for(const k of ['duration','initial','multiplier','wait','maxStake','takeProfit','stopLoss','maxLosses']){c[k]=number(c[k]);if(!Number.isFinite(c[k]))throw new Error('Enter a valid number for '+$(k).previousElementSibling.textContent+'.');}
+ if(!Number.isInteger(c.duration)||c.duration<2)throw new Error('Duration must be at least 2 whole minutes.');
+ if(c.initial<=0||round(c.initial)!==c.initial)throw new Error('Initial stake must be positive and use no more than '+precision+' decimal places.');
+ if(c.multiplier<=1)throw new Error('Loss multiplier must be greater than 1.');
+ if(!Number.isInteger(c.wait)||c.wait<0)throw new Error('Wait must be a non-negative whole number of seconds.');
+ for(const k of ['maxStake','takeProfit','stopLoss','maxLosses'])if(c[k]<0)throw new Error('Money management limits cannot be negative.');
+ if(!Number.isInteger(c.maxLosses))throw new Error('Maximum consecutive losses must be a whole number.');
+ if(!c.symbol)throw new Error('Choose a market.');
+ if(!['continue','stop'].includes(c.afterWin))throw new Error('Choose what happens after a win.');
+ return c;
+}
+function guardStake(stake,c){
+ if(!Number.isFinite(stake)||stake<=0||stake>Number.MAX_SAFE_INTEGER/10**precision)throw new Error('Next stake is outside the supported amount range. Reset or adjust the cycle.');
+ if(c.maxStake>0&&stake>c.maxStake+1e-8)throw new Error('Maximum stake reached. Next stake would be '+amountText(stake)+'.');
+ if(c.maxLosses>0&&session.streak>=c.maxLosses)throw new Error('Maximum consecutive losses reached.');
+ if(c.takeProfit>0&&session.pnl>=c.takeProfit-1e-8)throw new Error('Session take-profit target reached.');
+ if(c.stopLoss>0&&session.pnl-stake < -c.stopLoss-1e-8)throw new Error('Next stake would exceed the session loss limit if it loses.');
+ if(!Number.isFinite(balance))throw new Error('Account balance is unavailable. Reconnect before trading.');
+ if(stake>balance+1e-8)throw new Error('Insufficient balance for the next stake of '+amountText(stake)+'.');
+}
+class SocketClient {
+ constructor(){this.ws=null;this.requests=new Map();this.seq=0;this.closed=false;this.ready=false;this.onmessage=()=>{};this.onclose=()=>{};}
+ open(url){return new Promise((resolve,reject)=>{
+  this.ws=new WebSocket(url);let opened=false;
+  const timeout=setTimeout(()=>{reject(new Error('Connection timed out. Check your network.'));this.close();},15000);
+  this.ws.onopen=()=>{opened=true;this.ready=true;clearTimeout(timeout);resolve();};
+  this.ws.onerror=()=>{if(!opened){clearTimeout(timeout);reject(new Error('Could not open the Deriv connection.'));}};
+  this.ws.onclose=()=>{clearTimeout(timeout);this.ready=false;for(const p of this.requests.values()){clearTimeout(p.timer);p.reject(new Error('Deriv connection closed.'));}this.requests.clear();if(!opened)reject(new Error('Deriv connection closed before opening.'));if(!this.closed)this.onclose();};
+  this.ws.onmessage=event=>{let d;try{d=JSON.parse(event.data);}catch{return;}
+   const p=this.requests.get(d.req_id);
+   if(p){clearTimeout(p.timer);this.requests.delete(d.req_id);}
+   // Handle purchase receipts even if a request timed out. Never resend a buy.
+   try{this.onmessage(d);}catch(e){pause(safeMessage(e),'error');}
+   if(p){if(d.error){const e=new Error(d.error.message||d.error.code||'Deriv rejected the request.');e.definitive=true;p.reject(e);}else p.resolve(d);}
+  };
+ });}
+ request(body,timeoutMs=15000){
+  if(!this.ready||this.ws?.readyState!==1)return Promise.reject(new Error('Not connected to Deriv.'));
+  const req_id=++this.seq;
+  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.requests.delete(req_id);reject(new Error(body.buy?'Purchase response timed out. Check the previous purchase before continuing.':'Deriv request timed out.'));},timeoutMs);this.requests.set(req_id,{resolve,reject,timer});try{this.ws.send(JSON.stringify({...body,req_id}));}catch(e){clearTimeout(timer);this.requests.delete(req_id);reject(e);}});
+ }
+ close(){this.closed=true;this.ready=false;for(const p of this.requests.values()){clearTimeout(p.timer);p.reject(new Error('Disconnected.'));}this.requests.clear();try{this.ws?.close();}catch{}}
+}
+async function rest(path,method='GET',auth=credentials){
+ if(!auth?.token||!auth?.appId)throw new Error('Enter your App ID and Personal Access Token.');
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+ try{
+  const response=await fetch(API+path,{method,headers:{Authorization:'Bearer '+auth.token,'Deriv-App-ID':auth.appId,Accept:'application/json'},signal:controller.signal,cache:'no-store',credentials:'omit'});
+  let data;try{data=await response.json();}catch{throw new Error('Deriv returned an unreadable response (HTTP '+response.status+').');}
+  if(!response.ok||data.errors?.length)throw new Error(data.errors?.map(e=>e.message||e.detail||e.code).filter(Boolean).join('; ')||'Deriv request failed (HTTP '+response.status+').');
+  return data;
+ }catch(e){if(e.name==='AbortError')throw new Error('Deriv request timed out.');if(e instanceof TypeError)throw new Error('Cannot reach Deriv. Check your internet and open this file through your GitHub Pages link.');throw e;}finally{clearTimeout(timer);}
+}
+function normalizeAccounts(response){
+ const data=response.data;const list=Array.isArray(data)?data:Array.isArray(data?.accounts)?data.accounts:[];
+ return list.map(a=>{const type=String(a.account_type||a.type||'').toLowerCase();return {id:String(a.account_id||a.id||a.loginid||''),currency:a.currency||'',type:type==='demo'||a.is_virtual===1||a.is_virtual===true?'demo':type==='real'||a.is_virtual===0||a.is_virtual===false?'real':'unknown'};}).filter(a=>a.id&&a.type!=='unknown');
+}
+async function takeLock(id){
+ if(releaseLock&&lockedAccount===id)return;
+ if(releaseLock){releaseLock();releaseLock=null;lockedAccount=null;}
+ if(!navigator.locks)throw new Error('This browser cannot protect against duplicate bot tabs. Use a current Chrome browser on your GitHub Pages site.');
+ await new Promise((resolve,reject)=>{navigator.locks.request(PREFIX+id,{ifAvailable:true},async lock=>{if(!lock){reject(new Error('This account is open in another Roman Touch tab. Disconnect that tab first.'));return;}lockedAccount=id;await new Promise(release=>{releaseLock=release;resolve();});}).catch(reject);});
+}
+function drawChart(){
+ const canvas=$('chart'),r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=r.width*dpr;canvas.height=r.height*dpr;const ctx=canvas.getContext('2d');if(!ctx)return;ctx.scale(dpr,dpr);ctx.clearRect(0,0,r.width,r.height);$('chartEmpty').hidden=ticks.length>1;if(ticks.length<2)return;
+ let min=Math.min(...ticks),max=Math.max(...ticks),range=max-min||1;min-=range*.15;max+=range*.15;const y=v=>r.height-10-(v-min)/(max-min)*(r.height-20);ctx.beginPath();ticks.forEach((v,i)=>{const x=i/(ticks.length-1)*r.width;i?ctx.lineTo(x,y(v)):ctx.moveTo(x,y(v));});ctx.strokeStyle='#b5efce';ctx.lineWidth=1.8;ctx.stroke();
+}
+function updateContract(c){
+ if(!c)return;
+ $('contractId').textContent=String(c.contract_id||c.id||'—');
+ $('contractMoney').textContent=money(number(c.buy_price??c.stake))+' / '+money(number(c.payout));
+ $('contractLevels').textContent=(c.entry_tick??c.entry_spot??'—')+' / '+(c.barrier??'—');
+ $('contractProfit').textContent=money(number(c.profit));$('contractProfit').className=number(c.profit)>0?'green':number(c.profit)<0?'red':'';
+ $('contractStatus').textContent=String(c.status||'OPEN').toUpperCase();
+ const expired=number(c.date_expiry);if(Number(c.is_sold)===1){$('remaining').textContent='Settled';$('contractNote').textContent='Result confirmed by Deriv.';}else{$('remaining').textContent=Number.isFinite(expired)?remainingText(expired):'Waiting for contract update';$('contractNote').textContent='Waiting for Deriv settlement. The timer does not decide the result.';}
+}
+function remainingText(expiry){const seconds=Math.max(0,Math.ceil(expiry-Date.now()/1000));return seconds?Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'):'Awaiting settlement';}
+function render(){
+ const s=session||emptySession(),unsettled=!!(s.active||s.intent),locked=running||busy||unsettled;
+ $('balance').textContent=money(balance);$('pnl').textContent=(s.pnl>0?'+':'')+money(s.pnl);$('pnl').className=s.pnl>0?'green':s.pnl<0?'red':'';
+ $('currencyLabel').textContent=account?currency:'Account currency';$('accountLabel').textContent=account?account.type.toUpperCase()+' · '+account.id:'No account connected';
+ $('nextStake').textContent=money(s.nextStake);$('streak').textContent=s.streak+' consecutive '+(s.streak===1?'loss':'losses');$('winLoss').textContent=s.wins+' / '+s.losses;$('tradeCount').textContent=(s.wins+s.losses+s.flat)+' settled contracts';$('cycleLoss').textContent=amountText(s.cycleLoss);
+ $('accountBadge').textContent=account?account.type.toUpperCase():'NO ACCOUNT';$('accountBadge').className='badge '+(account?.type==='real'?'red':'');
+ $('marketName').textContent=$('symbol').selectedOptions[0]?.textContent||'Touch market';$('barrierSummary').textContent=$('barrier').value;$('durationSummary').textContent=$('duration').value+' minutes';
+ for(const k of settingIds)$(k).disabled=locked||connecting;
+ $('settingsLocked').hidden=!locked;
+ const authLock=connected||connecting||loading;
+ $('appId').disabled=authLock;$('token').disabled=authLock;$('loadAccounts').disabled=authLock||unsettled;$('account').disabled=authLock||unsettled;
+ $('connect').disabled=connected||connecting||loading||!$('account').value;$('connect').textContent=connecting?'Connecting…':unsettled?'Reconnect & recover':'2 · Connect selected account';
+ $('disconnect').disabled=!connected||locked;$('start').disabled=!connected||locked||corruptJournal||storageFailure;$('start').textContent=running?'Bot running…':'Start '+(account?account.type.toUpperCase()+' ':'')+'bot';
+ $('stop').disabled=!running&&!busy;$('preview').disabled=!connected||locked||corruptJournal;$('reset').disabled=locked||corruptJournal;
+ $('recoveryPanel').hidden=!s.intent||!!s.active;$('recover').disabled=!connected||busy;$('clearPending').disabled=!connected||busy;
+ $('emptyHistory').hidden=s.history.length>0;
+ $('history').replaceChildren(...s.history.slice(0,30).map(h=>{const tr=document.createElement('tr');tr.title='Contract '+h.id;for(const [i,v] of [timeFormat.format(new Date(h.time)),h.result,money(h.stake),(h.profit>0?'+':'')+money(h.profit)].entries()){const td=document.createElement('td');td.textContent=v;if(i===1||i===3)td.className=h.profit>0?'green':h.profit<0?'red':'muted';tr.append(td);}return tr;}));
+ const base=number($('initial').value),multi=$('martingale').checked?number($('multiplier').value):1;let value=base,total=0;const nodes=[];
+ for(let i=0;i<5;i++){if(!Number.isFinite(value)||value<=0)break;const n=document.createElement('span');n.textContent=money(value);nodes.push(n);total+=value;value=ceil(value*multi);}$('stakeSteps').replaceChildren(...nodes);$('progressionHint').textContent='First 5 stakes · total exposure '+amountText(round(total))+'.';
+ if(lastContract)updateContract(lastContract);
+}
+async function loadAccounts(){
+ if(loading||connected||connecting)return;loading=true;render();banner('Loading your Deriv Options accounts…');
+ try{
+  const auth={appId:$('appId').value.trim(),token:$('token').value.trim()};const result=await rest('/accounts','GET',auth);accounts=normalizeAccounts(result);
+  if(!accounts.length)throw new Error('No supported Options accounts returned. Check this PAT app and its Trade permission.');
+  credentials=auth;accounts.sort((a,b)=>(a.type==='demo'?0:1)-(b.type==='demo'?0:1));
+  $('account').replaceChildren(new Option('Choose an account',''),...accounts.map(a=>new Option(a.type.toUpperCase()+' · '+a.id+' · '+a.currency,a.id)));
+  const demo=accounts.find(a=>a.type==='demo');if(demo)$('account').value=demo.id;
+  saveSettings();banner(demo?'Accounts loaded. Connect your demo account to begin.':'Accounts loaded. Select the account you want to connect.');log('Loaded '+accounts.length+' Options account(s).');
+ }catch(e){banner(safeMessage(e),'error');log(e,'red');}finally{loading=false;render();}
+}
+function disconnect(){
+ if(running||busy||session?.active||session?.intent)return;
+ connected=false;rpc?.close();rpc=null;clearInterval(heartbeat);clearInterval(pollTimer);ticks=[];latestTick=null;tickSubscription=null;contractSubscription=null;balance=null;
+ releaseLock?.();releaseLock=null;lockedAccount=null;releaseWake();status('OFFLINE');$('connectionText').textContent='Disconnected. Session is saved on this device.';banner('Disconnected. Connect again when ready.');render();drawChart();
+}
+async function connect(){
+ if(connected||connecting)return;
+ const chosen=accounts.find(a=>a.id===$('account').value);if(!chosen){banner('Load and select an account first.','error');return;}
+ connecting=true;running=false;runId++;clearTimeout(nextTimer);render();banner('Connecting to '+chosen.type.toUpperCase()+' '+chosen.id+'…');
+ try{
+  await takeLock(chosen.id);rpc?.close();clearInterval(heartbeat);clearInterval(pollTimer);tickSubscription=null;contractSubscription=null;balance=null;
+  account=chosen;currency=chosen.currency||'USD';const response=await rest('/accounts/'+encodeURIComponent(chosen.id)+'/otp','POST');
+  const url=new URL(response.data?.url);
+  if(url.protocol!=='wss:'||url.hostname!=='api.derivws.com'||url.pathname!=='/trading/v1/options/ws/'+chosen.type)throw new Error('Deriv returned an unexpected trading connection. No connection was opened.');
+  const client=new SocketClient();rpc=client;client.onmessage=d=>{if(client===rpc)onMessage(d);};client.onclose=()=>{if(client===rpc)connectionLost();};await client.open(url.href);
+  const b=await client.request({balance:1,subscribe:1});setBalance(b.balance);if(!Number.isFinite(balance))throw new Error('Deriv did not return an account balance.');
+  loadSession();connected=true;await loadMarkets();await subscribeTicks();
+  heartbeat=setInterval(()=>{if(connected)rpc.request({ping:1},10000).catch(()=>{rpc?.close();connectionLost();});},25000);
+  pollTimer=setInterval(()=>pollContract(),10000);
+  $('connectionText').textContent='Connected · '+account.type.toUpperCase()+' · '+account.id+' · '+currency;
+  if(corruptJournal){status('CHECK SESSION','gold');}
+  else if(session.active){await watchContract(session.active.id);status(session.active?'TRACKING':'READY','green');banner(session.active?'Previous contract recovered. It will be tracked to settlement; press Start afterward to continue.':'Previous contract settled. Review the result before starting.');}
+  else if(session.intent){status('CHECK PURCHASE','gold');banner('A previous purchase has no confirmed response. Check its contract before continuing.','warn');}
+  else{status('READY','green');banner('Connected to '+account.type.toUpperCase()+'. Review the settings, then press Start.');}
+  log('Connected to '+account.type.toUpperCase()+' '+account.id+'.');
+ }catch(e){connected=false;rpc?.close();status('OFFLINE');banner(safeMessage(e),'error');log(e,'red');releaseLock?.();releaseLock=null;lockedAccount=null;}
+ finally{connecting=false;render();}
+}
+function setBalance(b){if(!b)return;const value=number(b.balance);if(Number.isFinite(value))balance=value;if(b.currency){currency=b.currency;try{precision=new Intl.NumberFormat('en',{style:'currency',currency}).resolvedOptions().maximumFractionDigits;}catch{precision=8;}if(['BTC','ETH','LTC','USDT','USDC','UST','eUSDT','tUSDT'].includes(currency))precision=8;}if(account)account.currency=currency;}
+function connectionLost(){
+ if(!connected&&!connecting)return;connected=false;running=false;runId++;clearTimeout(nextTimer);clearInterval(heartbeat);clearInterval(pollTimer);releaseWake();status('CONNECTION LOST','gold');$('connectionText').textContent='Connection lost. Reconnect to recover the current contract.';banner('Connection lost. Automation is paused. Reconnect to check the last contract before continuing.','warn');log('Connection lost. No purchase will be retried.','gold');render();
+}
+async function loadMarkets(){
+ try{const d=await rpc.request({active_symbols:'brief',contract_type:['ONETOUCH']});const list=(d.active_symbols||[]).filter(x=>x.underlying_symbol&&Number(x.is_trading_suspended)!==1&&Number(x.exchange_is_open)!==0);
+  if(!list.length)throw new Error('No Touch markets returned.');
+  const selected=$('symbol').value;list.sort((a,b)=>(a.underlying_symbol==='RDBULL'?-2:a.underlying_symbol==='RDBEAR'?-1:0)-(b.underlying_symbol==='RDBULL'?-2:b.underlying_symbol==='RDBEAR'?-1:0)||a.underlying_symbol_name.localeCompare(b.underlying_symbol_name));
+  $('symbol').replaceChildren(...list.map(x=>new Option(x.underlying_symbol_name||x.underlying_symbol,x.underlying_symbol)));
+  if(!list.some(x=>x.underlying_symbol===selected))$('symbol').add(new Option(selected+' · unavailable',selected));$('symbol').value=selected;$('marketHint').textContent='Live Touch markets loaded. The barrier sign stays as you set it.';
+ }catch(e){log('Market list: '+safeMessage(e),'gold');$('marketHint').textContent='Market list unavailable. The selected market will be checked before purchase.';}
+}
+async function subscribeTicks(){
+ const generation=++marketGeneration;if(tickSubscription){rpc.request({forget:tickSubscription}).catch(()=>{});tickSubscription=null;}ticks=[];latestTick=null;drawChart();
+ try{const d=await rpc.request({ticks:$('symbol').value,subscribe:1});if(generation!==marketGeneration){if(d.subscription?.id)rpc.request({forget:d.subscription.id}).catch(()=>{});return;}tickSubscription=d.subscription?.id||null;}catch(e){log('Prices: '+safeMessage(e),'gold');}
+}
+function onMessage(d){
+ if(d.error)return;
+ if(d.balance){setBalance(d.balance);render();}
+ if(d.tick){const t=d.tick,market=t.underlying_symbol||t.symbol;if(market&&market!==$('symbol').value)return;const q=number(t.quote);if(Number.isFinite(q)){latestTick=q;ticks.push(q);if(ticks.length>100)ticks.shift();$('spot').textContent=String(t.quote);$('tickTime').textContent='Live · '+timeFormat.format(new Date((number(t.epoch)||Date.now()/1000)*1000))+' WAT';drawChart();}}
+ if(d.buy&&session?.intent&&String(d.echo_req?.buy)===String(session.intent.proposalId))acceptPurchase(d.buy);
+ if(d.proposal_open_contract)processContract(d.proposal_open_contract);
+}
+function pause(message,kind='warn'){
+ running=false;runId++;clearTimeout(nextTimer);releaseWake();status(session?.active?'TRACKING':session?.intent?'CHECK PURCHASE':connected?'PAUSED':'OFFLINE',kind==='error'?'red':'gold');if(message){banner(message,kind);log(message,kind==='error'?'red':'gold');}render();
+}
+async function requestWake(){try{if(navigator.wakeLock&&!wakeLock){wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null;});}}catch{}}
+function releaseWake(){try{wakeLock?.release();}catch{}wakeLock=null;}
+function clearQuote(){lastQuote=null;$('payout').textContent='—';$('quoteProfit').textContent='—';$('quoteHint').textContent='Check quote to see the current price and payout. Each trade uses a fresh quote.';}
+async function checkMarket(c){
+ const d=await rpc.request({contracts_for:c.symbol});const offers=(d.contracts_for?.available||[]).filter(x=>x.contract_type==='ONETOUCH');if(!offers.length)throw new Error('Touch is not currently available for this market.');
+ const seconds=s=>{const match=/^(\d+)([smhd])$/.exec(s||'');return match?Number(match[1])*({s:1,m:60,h:3600,d:86400}[match[2]]):null;};
+ const allowed=offers.some(o=>{const min=seconds(o.min_contract_duration),max=seconds(o.max_contract_duration);return(min===null||c.duration*60>=min)&&(max===null||c.duration*60<=max);});
+ if(!allowed)throw new Error('This duration is not currently offered by Deriv for Touch on this market.');
+}
+async function quote(c,stake){
+ const d=await rpc.request({proposal:1,amount:stake,basis:'stake',contract_type:'ONETOUCH',currency,duration:c.duration,duration_unit:'m',barrier:c.barrier,underlying_symbol:c.symbol});const p=d.proposal,ask=number(p?.ask_price),payout=number(p?.payout);
+ if(!p?.id||!Number.isFinite(ask)||ask<=0||!Number.isFinite(payout)||payout<=ask)throw new Error('Deriv returned an incomplete or invalid quote. No purchase was sent.');
+ if(Math.abs(ask-stake)>1e-8)throw new Error('Quoted stake differs from the requested stake. No purchase was sent.');
+ lastQuote={id:p.id,ask,payout,time:Date.now(),cfg:c};$('payout').textContent=amountText(payout);$('quoteProfit').textContent=amountText(round(payout-ask));
+ const rate=(payout-ask)/ask,cycleAfter=round(payout-ask-(session?.cycleLoss||0));
+ $('quoteHint').textContent='Live quote · '+(payout/ask).toFixed(3)+'× payout. If it wins, this cycle nets '+amountText(cycleAfter)+'. '+(c.martingale&&c.multiplier<1+1/rate?'Your multiplier may not fully recover longer loss streaks at this payout.':'Payout is checked again before every purchase.');
+ return lastQuote;
+}
+async function preview(){
+ if(!connected||busy||running||session?.active||session?.intent)return;busy=true;render();
+ try{const c=config();await checkMarket(c);const b=await rpc.request({balance:1});setBalance(b.balance);const stake=session.nextStake;guardStake(stake,c);await quote(c,stake);banner('Quote checked for '+amountText(stake)+'. No contract was purchased.');}
+ catch(e){banner(safeMessage(e),'error');log(e,'red');}finally{busy=false;render();}
+}
+async function start(){
+ if(!connected||busy||running||session?.active||session?.intent||corruptJournal||storageFailure)return;
+ busy=true;running=true;const thisRun=++runId;render();status('CHECKING','green');
+ try{
+  const c=config();saveSettings();if(!saveSession())throw new Error('Cannot save the session. Allow site storage before trading.');
+  await checkMarket(c);const p=await rpc.request({portfolio:1});if(!Array.isArray(p.portfolio?.contracts))throw new Error('Could not verify open positions. No trade was sent.');
+  if(p.portfolio.contracts.length)throw new Error('This account already has open positions. Wait for them to settle before starting this bot.');
+  if(!running||runId!==thisRun)return;await requestWake();banner('Bot running · '+account.type.toUpperCase()+' account. One Touch contract at a time.');log('Started '+account.type.toUpperCase()+' · '+c.symbol+' · '+c.barrier+' · '+c.duration+'m.');
+ }catch(e){pause(safeMessage(e),'error');}finally{busy=false;render();}
+ if(running&&runId===thisRun)void tradeNext(thisRun);
+}
+async function tradeNext(thisRun){
+ if(!running||runId!==thisRun||!connected||busy||session.active||session.intent)return;
+ busy=true;render();let intent=null;
+ try{
+  const c=config();const stake=session.nextStake;
+  const b=await rpc.request({balance:1});setBalance(b.balance);guardStake(stake,c);
+  const p=await quote(c,stake);
+  if(!running||runId!==thisRun||!connected)return;
+  guardStake(p.ask,c);
+  intent={proposalId:p.id,stake:p.ask,payout:p.payout,cfg:c,created:Date.now()};session.intent=intent;
+  // Persist intent BEFORE sending buy. A timeout never triggers a second purchase.
+  if(!saveSession())throw new Error('Purchase cancelled because the trade journal could not be saved.');
+  status('BUYING','green');render();
+  let result;
+  try{result=await rpc.request({buy:p.id,price:p.ask});}
+  catch(e){if(e.definitive&&session.intent?.proposalId===p.id){session.intent=null;saveSession();}throw e;}
+  if(session.intent?.proposalId===p.id){if(result.buy)acceptPurchase(result.buy);else throw new Error('Missing purchase receipt. Check the previous purchase before continuing.');}
+ }catch(e){pause(safeMessage(e),'error');}
+ finally{busy=false;render();}
+ // Very short Touch contracts can settle before the purchase promise resolves.
+ if(running&&!session.active&&!session.intent&&runId===thisRun)scheduleNext(thisRun);
+}
+function acceptPurchase(b){
+ const i=session?.intent;if(!i||session.active)return;
+ if(!validId(b.contract_id))throw new Error('Purchase receipt has no valid contract ID. Check the purchase in Deriv Reports.');
+ const stake=number(b.buy_price);if(!Number.isFinite(stake)||stake<=0)throw new Error('Purchase receipt has no valid stake. Check the purchase in Deriv Reports.');
+ session.active={id:String(b.contract_id),stake,payout:number(b.payout)||i.payout,cfg:i.cfg,created:i.created};session.intent=null;saveSession();
+ lastContract={contract_id:b.contract_id,buy_price:stake,payout:b.payout,status:'open',date_expiry:number(b.start_time||b.purchase_time)+i.cfg.duration*60};
+ if(Number.isFinite(number(b.balance_after)))balance=number(b.balance_after);
+ status(running?'CONTRACT OPEN':'TRACKING','green');log('Bought Touch · '+amountText(stake)+' · contract '+b.contract_id+'.');render();
+ void watchContract(String(b.contract_id)).catch(e=>{pause('Contract bought, but tracking needs a reconnect: '+safeMessage(e),'error');});
+}
+async function watchContract(id){
+ const d=await rpc.request({proposal_open_contract:1,contract_id:Number(id),subscribe:1});
+ if(d.subscription?.id){if(session?.active?.id===String(id))contractSubscription=d.subscription.id;else rpc.request({forget:d.subscription.id}).catch(()=>{});}
+}
+async function pollContract(){
+ if(!connected||!session?.active||pollBusy)return;pollBusy=true;
+ try{await rpc.request({proposal_open_contract:1,contract_id:Number(session.active.id)});}catch(e){if(connected)pause('Contract tracking interrupted: '+safeMessage(e),'error');}finally{pollBusy=false;}
+}
+function processContract(c){
+ const a=session?.active;if(!a||String(c.contract_id)!==a.id)return;
+ lastContract={...lastContract,...c};updateContract(lastContract);
+ if(Number(c.is_sold)!==1)return;
+ const profit=number(c.profit);if(!Number.isFinite(profit)){pause('Deriv marked the contract settled without a profit figure. Reconnect to check the final result.','error');return;}
+ const id=a.id,cfg=a.cfg;session.pnl=round(session.pnl+profit);let result;
+ if(profit>0){session.wins++;session.streak=0;session.cycleLoss=0;session.nextStake=cfg.initial;result='WIN';}
+ else if(profit<0){session.losses++;session.streak++;session.cycleLoss=round(session.cycleLoss-profit);session.nextStake=cfg.martingale?ceil(a.stake*cfg.multiplier):cfg.initial;result='LOSS';}
+ else{session.flat++;session.nextStake=a.stake;result='REFUND';}
+ session.history.unshift({id,time:Date.now(),result,stake:a.stake,profit:round(profit)});session.history=session.history.slice(0,100);session.active=null;session.intent=null;clearQuote();
+ // Refresh even when stopping after a win; subscription delivery may lag settlement.
+ if(connected)rpc.request({balance:1}).catch(e=>log('Balance refresh: '+safeMessage(e),'gold'));
+ const saved=saveSession();if(contractSubscription){rpc?.request({forget:contractSubscription}).catch(()=>{});contractSubscription=null;}
+ log(result+' · '+amountText(profit)+' · next stake '+amountText(session.nextStake)+'.',profit>0?'green':profit<0?'red':'gold');
+ if(!saved){render();return;}
+ if(profit>0&&cfg.afterWin==='stop'){pause('Win confirmed. Bot stopped and stake reset to '+amountText(cfg.initial)+'.','');return;}
+ if(running){status('BETWEEN TRADES','green');banner(result+' confirmed. Next stake: '+amountText(session.nextStake)+'.');scheduleNext(runId);}else{status(connected?'PAUSED':'OFFLINE','gold');banner(result+' confirmed. Bot is stopped. Next stake: '+amountText(session.nextStake)+'.');}
+ render();
+}
+function scheduleNext(id){
+ clearTimeout(nextTimer);if(!running||id!==runId||session.active||session.intent)return;
+ const delay=Math.max(0,number($('wait').value)||0)*1000;
+ nextTimer=setTimeout(()=>{if(busy){scheduleNext(id);return;}void tradeNext(id);},Math.max(100,delay));
+}
+async function recover(){
+ if(!connected||busy||!session?.intent||session.active)return;const id=$('recoveryId').value.trim();if(!validId(id)){banner('Enter the numeric contract ID from Deriv Reports.','error');return;}
+ busy=true;render();
+ try{const intent=session.intent;const d=await rpc.request({proposal_open_contract:1,contract_id:Number(id)});const c=d.proposal_open_contract;
+  const symbol=c?.underlying_symbol||c?.symbol;const start=number(c?.date_start||c?.purchase_time)*1000;
+  if(!c||c.contract_type!=='ONETOUCH'||symbol!==intent.cfg.symbol||Math.abs(number(c.buy_price)-intent.stake)>1e-8||!Number.isFinite(start)||Math.abs(start-intent.created)>120000)throw new Error('This contract does not match the pending Touch purchase. Check its ID in Deriv Reports.');
+  session.active={id,stake:number(c.buy_price),payout:number(c.payout),cfg:intent.cfg,created:intent.created};session.intent=null;saveSession();lastContract=c;processContract(c);
+  if(session.active)await watchContract(id);banner(session.active?'Contract found. Tracking it to settlement; automation remains paused.':'Contract result recovered. Review the session before starting.');status(session.active?'TRACKING':'PAUSED','gold');log('Recovered contract '+id+'.');
+ }catch(e){banner(safeMessage(e),'error');log(e,'red');}finally{busy=false;render();}
+}
+async function clearPending(){
+ if(!connected||busy||!session?.intent)return;
+ if(!confirm('Only continue if you checked Deriv Reports and confirmed this purchase did NOT happen. Clearing an actual purchase could cause duplicate trading. Have you confirmed no purchase?'))return;
+ busy=true;render();try{const d=await rpc.request({portfolio:1});if(!Array.isArray(d.portfolio?.contracts)||d.portfolio.contracts.length)throw new Error('Open positions exist or could not be verified. Resolve the previous purchase first.');session.intent=null;saveSession();pause('Pending purchase cleared after your verification. Press Start when ready.','');}catch(e){banner(safeMessage(e),'error');}finally{busy=false;render();}
+}
+function reset(){
+ if(running||busy||session?.active||session?.intent||corruptJournal)return;
+ if(session&&(session.wins+session.losses+session.flat)>0&&!confirm('Reset session totals, trade history and the martingale stake? This does not change your Deriv account history.'))return;
+ session=emptySession();lastContract=null;saveSession();clearQuote();for(const k of ['contractId','contractMoney','contractLevels','remaining','contractProfit'])$(k).textContent='—';$('contractStatus').textContent='IDLE';$('contractNote').textContent='The next trade waits for a confirmed settlement.';banner('Session reset. Next stake is the initial stake.');render();
+}
+function settingsChanged(event){
+ if(running||busy||session?.active||session?.intent)return;
+ const id=event.target.id;if(session&&(id==='initial'||id==='martingale'||id==='multiplier')){
+  if(session.streak===0||!$('martingale').checked)session.nextStake=number($('initial').value)||session.nextStake;
+  else if(id==='multiplier'||id==='martingale'){const lastLoss=session.history.find(h=>h.profit<0);if(lastLoss){const n=ceil(lastLoss.stake*number($('multiplier').value));if(Number.isFinite(n)&&n>0)session.nextStake=n;}}
+  saveSession();
+ }
+ clearQuote();saveSettings();render();if(id==='symbol'&&connected)void subscribeTicks();
+}
+$('loadAccounts').addEventListener('click',()=>void loadAccounts());$('connect').addEventListener('click',()=>void connect());$('disconnect').addEventListener('click',disconnect);
+$('preview').addEventListener('click',()=>void preview());$('start').addEventListener('click',()=>void start());$('stop').addEventListener('click',()=>pause(session?.active?'Stop requested. Current contract will finish; no new contract will be bought.':'Bot stopped. No new contract will be bought.',''));
+$('reset').addEventListener('click',reset);$('recover').addEventListener('click',()=>void recover());$('clearPending').addEventListener('click',()=>void clearPending());
+$('showToken').addEventListener('click',()=>{const show=$('token').type==='password';$('token').type=show?'text':'password';$('showToken').textContent=show?'Hide':'Show';$('showToken').setAttribute('aria-label',show?'Hide token':'Show token');});
+for(const k of settingIds)$(k).addEventListener('change',settingsChanged);
+for(const k of ['appId','token'])$(k).addEventListener('input',()=>{if(!connected&&!connecting&&!loading){accounts=[];credentials=null;$('account').replaceChildren(new Option('Load accounts again',''));render();}});
+$('account').addEventListener('change',render);
+window.addEventListener('resize',drawChart);window.addEventListener('beforeunload',e=>{if(running||busy||session?.active||session?.intent){e.preventDefault();e.returnValue='';}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(running)void requestWake();if(connected)void pollContract();}});
+setInterval(()=>{if(session?.active&&lastContract?.date_expiry)$('remaining').textContent=remainingText(number(lastContract.date_expiry));},1000);
+try{const saved=JSON.parse(localStorage.getItem(PREFIX+'settings')||'null');if(saved)putSettings(saved);$('appId').value=localStorage.getItem(PREFIX+'appId')||'';}catch{}
+render();drawChart();log('Ready. Default: Bull Market · Touch · +1.3295 · 2m · stake 1 · multiplier 3.');
+})();
+</script>
+</body>
+</html>
