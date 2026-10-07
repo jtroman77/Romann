@@ -1,0 +1,447 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Roman Rise/Fall 15S Fixed</title>
+  <style>
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;background:#07101c;color:#eef6ff;font-family:system-ui}
+    .w{max-width:900px;margin:auto;padding:12px}
+    .c{background:#101c2b;border:1px solid #29415e;border-radius:18px;padding:15px;margin:12px 0}
+    .r{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+    .g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    input,select,button{width:100%;padding:11px;border-radius:11px;border:1px solid #29415e;background:#07111e;color:white}
+    button{margin-top:9px;background:#1678e8;font-weight:800}
+    button:disabled{opacity:.45}
+    .stop{background:#92243a}
+    .s{background:#08121f;padding:9px;border-radius:11px}
+    .k,label{font-size:11px;color:#92a9c0}
+    .v{font-weight:800;font-size:17px}
+    .f{font:700 12px monospace;color:#8ec8ff}
+    table{width:100%;font-size:11px;border-collapse:collapse}
+    td,th{padding:7px;border-bottom:1px solid #26394e;text-align:left}
+    @media(max-width:650px){.r{grid-template-columns:1fr}.g{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<div class="w">
+  <div class="c">
+    <h1>Roman Rise/Fall 15S FIXED</h1>
+    <div class="f">TREND -> PULLBACK -> 3-TICK CONFIRM -> RISE/FALL</div>
+  </div>
+
+  <div class="c">
+    <h2>Deriv</h2>
+    <div class="r">
+      <div><label>App ID</label><input id="app" value="1089"></div>
+      <div><label>API Token</label><input id="tok" type="password" autocomplete="off"></div>
+      <div>
+        <label>Market filter</label>
+        <select id="filter">
+          <option value="synthetic_index" selected>Synthetic indices only</option>
+          <option value="all">All Rise/Fall markets</option>
+        </select>
+      </div>
+    </div>
+    <button id="connect">CONNECT</button>
+    <p id="status">Ready</p>
+  </div>
+
+  <div class="c">
+    <h2>Trade</h2>
+    <div class="r">
+      <div><label>Duration seconds</label><input id="dur" type="number" value="15" min="5"></div>
+      <div><label>Confirm %</label><input id="min" type="number" value="72" min="50" max="99"></div>
+      <div>
+        <label>Loss action</label>
+        <select id="action">
+          <option value="switch1">Switch after 1 loss</option>
+          <option value="switch2" selected>Switch after 2 losses</option>
+          <option value="stop1">Stop on single loss</option>
+          <option value="cycle">Keep cycling</option>
+        </select>
+      </div>
+      <div><label>Initial stake</label><input id="base" type="number" value="1" min=".35" step=".01"></div>
+      <div><label>Martingale</label><input id="mult" type="number" value="2" min="1" step=".01"></div>
+      <div><label>Max stake</label><input id="max" type="number" value="400" min="1"></div>
+      <div><label>TP</label><input id="tp" type="number" value="20" min="0"></div>
+      <div><label>SL</label><input id="sl" type="number" value="400" min="0"></div>
+      <div><label>Max losses</label><input id="maxl" type="number" value="8" min="1"></div>
+    </div>
+    <div class="f">LOSS -> stake x multiplier · WIN -> initial stake</div>
+    <button id="start" disabled>START</button>
+    <button id="stop" class="stop">STOP</button>
+  </div>
+
+  <div class="c">
+    <div class="g">
+      <div class="s"><div class="k">Balance</div><div id="bal" class="v">-</div></div>
+      <div class="s"><div class="k">Market</div><div id="market" class="v">-</div></div>
+      <div class="s"><div class="k">Signal</div><div id="sig" class="v">WAIT</div></div>
+      <div class="s"><div class="k">Score</div><div id="score" class="v">0%</div></div>
+      <div class="s"><div class="k">Stake</div><div id="stake" class="v">$1.00</div></div>
+      <div class="s"><div class="k">W/L</div><div id="wl" class="v">0/0</div></div>
+      <div class="s"><div class="k">Loss streak</div><div id="ls" class="v">0</div></div>
+      <div class="s"><div class="k">P/L</div><div id="pl" class="v">$0.00</div></div>
+    </div>
+  </div>
+
+  <div class="c">
+    <h2>Scanner</h2>
+    <table>
+      <thead><tr><th>Market</th><th>Signal</th><th>Score</th></tr></thead>
+      <tbody id="scan"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const S = {
+  ws: null, connected: false, authorized: false, on: false, busy: false,
+  req: 1, currency: "USD", symbols: new Map(), ticks: new Map(), ok: new Set(),
+  stake: 1, pl: 0, w: 0, l: 0, ls: 0, lossesBySymbol: new Map(),
+  blocked: new Set(), active: null, pending: null, session: 0, triedFallback: false
+};
+
+const money = n => "$" + Number(n || 0).toFixed(2);
+const say = text => $("status").textContent = text;
+const send = msg => {
+  if (!S.ws || S.ws.readyState !== WebSocket.OPEN) return false;
+  S.ws.send(JSON.stringify({...msg, req_id: msg.req_id || ++S.req}));
+  return true;
+};
+
+function resetRunStats() {
+  S.stake = Number($("base").value) || 1;
+  S.pl = 0; S.w = 0; S.l = 0; S.ls = 0;
+  S.lossesBySymbol.clear();
+  S.blocked.clear();
+  S.busy = false;
+  S.active = null;
+  S.pending = null;
+  refresh();
+}
+
+function connect() {
+  const appId = $("app").value.trim() || "1089";
+  const token = $("tok").value.replace(/\s+/g, "");
+  if (!token) { say("Paste API token first"); return; }
+
+  if (S.ws) {
+    S.ws.onclose = null;
+    S.ws.onerror = null;
+    try { S.ws.close(); } catch {}
+  }
+
+  const session = ++S.session;
+  S.triedFallback = false;
+  S.connected = false;
+  S.authorized = false;
+  $("start").disabled = true;
+  openSocket(appId, token, session, 0);
+}
+
+function openSocket(appId, token, session, endpointIndex) {
+  const endpoints = [
+    "wss://ws.derivws.com/websockets/v3?app_id=",
+    "wss://ws.binaryws.com/websockets/v3?app_id="
+  ];
+  const url = endpoints[endpointIndex] + encodeURIComponent(appId);
+  say(endpointIndex ? "Trying backup connection..." : "Connecting...");
+
+  S.ws = new WebSocket(url);
+  S.ws.onopen = () => {
+    if (session !== S.session) return;
+    S.connected = true;
+    say("Authorizing...");
+    send({authorize: token});
+  };
+  S.ws.onerror = () => {
+    if (session !== S.session) return;
+    say("Socket error. Waiting for close reason...");
+  };
+  S.ws.onclose = ev => {
+    if (session !== S.session) return;
+    const wasAuthorized = S.authorized;
+    S.connected = false;
+    S.authorized = false;
+    S.on = false;
+    $("start").disabled = true;
+    if (!wasAuthorized && endpointIndex === 0) {
+      openSocket(appId, token, session, 1);
+      return;
+    }
+    const why = ev.reason ? " - " + ev.reason : "";
+    say("Disconnected" + (ev.code ? " (" + ev.code + ")" : "") + why);
+  };
+  S.ws.onmessage = handleMessage;
+}
+
+function handleMessage(e) {
+  let d;
+  try { d = JSON.parse(e.data); } catch { return; }
+
+  if (d.error) {
+    const probe = d.echo_req?.passthrough?.probe;
+    if (probe) { S.ok.delete(probe); return; }
+    const msg = d.error.message || "Deriv error";
+    if (d.echo_req?.authorize) {
+      S.authorized = false;
+      $("start").disabled = true;
+      say("Token rejected: " + msg);
+      return;
+    }
+    say(msg);
+    if (S.pending && d.echo_req?.buy) S.busy = false;
+    S.pending = null;
+    return;
+  }
+
+  if (d.msg_type === "authorize") {
+    S.authorized = true;
+    S.currency = d.authorize?.currency || "USD";
+    $("start").disabled = false;
+    say("Connected. Loading markets...");
+    send({balance: 1, subscribe: 1});
+    send({active_symbols: "brief", product_type: "basic"});
+    return;
+  }
+
+  if (d.msg_type === "balance") {
+    const bal = Number(d.balance?.balance);
+    if (Number.isFinite(bal)) $("bal").textContent = money(bal);
+    return;
+  }
+
+  if (d.msg_type === "active_symbols") {
+    loadSymbols(d.active_symbols || []);
+    return;
+  }
+
+  if (d.msg_type === "history") {
+    const code = d.echo_req?.ticks_history;
+    if (code) S.ticks.set(code, (d.history?.prices || []).map(Number).filter(Number.isFinite));
+    return;
+  }
+
+  if (d.msg_type === "tick") {
+    const code = d.tick?.symbol;
+    const quote = Number(d.tick?.quote);
+    if (!code || !Number.isFinite(quote)) return;
+    const arr = S.ticks.get(code) || [];
+    arr.push(quote);
+    S.ticks.set(code, arr.slice(-100));
+    evaluate();
+    return;
+  }
+
+  if (d.msg_type === "proposal" && d.echo_req?.passthrough?.probe) {
+    S.ok.add(d.echo_req.passthrough.probe);
+    return;
+  }
+
+  if (d.msg_type === "proposal" && S.pending?.stage === "proposal") {
+    S.pending.stage = "buy";
+    const ask = Number(d.proposal?.ask_price);
+    send({buy: d.proposal.id, price: Number((ask * 1.02).toFixed(2))});
+    return;
+  }
+
+  if (d.msg_type === "buy" && S.pending?.stage === "buy") {
+    const pick = S.pending.pick;
+    S.active = {id: d.buy.contract_id, code: pick.code, name: pick.marketName, signal: pick.signal, stake: S.stake};
+    S.pending = null;
+    send({proposal_open_contract: 1, contract_id: S.active.id, subscribe: 1});
+    return;
+  }
+
+  if (d.msg_type === "proposal_open_contract" && S.active) {
+    const c = d.proposal_open_contract || {};
+    if (String(c.contract_id) !== String(S.active.id)) return;
+    if (c.is_sold || ["won", "lost", "sold"].includes(String(c.status || "").toLowerCase())) {
+      settle(Number(c.profit) || 0);
+    }
+  }
+}
+
+function loadSymbols(list) {
+  S.symbols.clear();
+  S.ticks.clear();
+  S.ok.clear();
+  S.blocked.clear();
+
+  const filter = $("filter").value;
+  const maxMarkets = filter === "all" ? 18 : 24;
+  const eligible = list
+    .filter(x => x.exchange_is_open !== 0)
+    .filter(x => filter === "all" || x.market === filter || x.market_display_name === "Derived")
+    .slice(0, maxMarkets);
+
+  for (const x of eligible) {
+    const code = x.symbol;
+    const marketName = x.display_name || x.underlying_symbol_name || code;
+    if (!code) continue;
+    S.symbols.set(code, {code, marketName});
+    send({ticks_history: code, count: 60, end: "latest", style: "ticks"});
+    send({ticks: code, subscribe: 1});
+    send({
+      proposal: 1,
+      amount: 1,
+      basis: "stake",
+      contract_type: "CALL",
+      currency: S.currency,
+      symbol: code,
+      duration: Number($("dur").value) || 15,
+      duration_unit: "s",
+      passthrough: {probe: code}
+    });
+  }
+
+  say("Loaded " + eligible.length + " markets. Scanner warming up...");
+}
+
+function ema(a, n) {
+  if (a.length < n) return NaN;
+  const k = 2 / (n + 1);
+  let e = a[a.length - n];
+  for (let i = a.length - n + 1; i < a.length; i++) e = a[i] * k + e * (1 - k);
+  return e;
+}
+
+function calc(a) {
+  if (a.length < 30) return null;
+  const e8 = ema(a, 8);
+  const e21 = ema(a, 21);
+  if (!Number.isFinite(e8) || !Number.isFinite(e21)) return null;
+
+  const recent = a.slice(-30);
+  const range = Math.max(...recent) - Math.min(...recent);
+  if (!range) return null;
+
+  const trend = (e8 - e21) / range;
+  const pullback = a.slice(-7, -2);
+  const upConfirm = a.at(-1) > a.at(-2) && a.at(-2) >= a.at(-3);
+  const downConfirm = a.at(-1) < a.at(-2) && a.at(-2) <= a.at(-3);
+  let signal = null;
+
+  if (trend > 0 && Math.min(...pullback) <= e8 && upConfirm) signal = "RISE";
+  if (trend < 0 && Math.max(...pullback) >= e8 && downConfirm) signal = "FALL";
+  if (!signal) return null;
+
+  return {signal, score: Math.min(99, Math.round(60 + Math.abs(trend) * 180))};
+}
+
+function evaluate() {
+  const rows = [];
+  for (const code of S.ok) {
+    if (S.blocked.has(code)) continue;
+    const meta = S.symbols.get(code);
+    const model = calc(S.ticks.get(code) || []);
+    if (meta && model) rows.push({...meta, ...model});
+  }
+
+  rows.sort((a, b) => b.score - a.score);
+  $("scan").innerHTML = rows.slice(0, 12).map(x =>
+    `<tr><td>${escapeHtml(x.marketName)}</td><td>${x.signal}</td><td>${x.score}%</td></tr>`
+  ).join("");
+
+  const best = rows[0];
+  if (!best) return;
+  $("market").textContent = best.marketName;
+  $("sig").textContent = best.signal;
+  $("score").textContent = best.score + "%";
+
+  const minScore = Number($("min").value) || 72;
+  if (S.on && !S.busy && !S.active && best.score >= minScore) place(best);
+}
+
+function place(pick) {
+  if (!S.authorized || !S.on || S.busy || S.active) return;
+  S.busy = true;
+  S.pending = {stage: "proposal", pick};
+  send({
+    proposal: 1,
+    amount: S.stake,
+    basis: "stake",
+    contract_type: pick.signal === "RISE" ? "CALL" : "PUT",
+    currency: S.currency,
+    symbol: pick.code,
+    duration: Number($("dur").value) || 15,
+    duration_unit: "s"
+  });
+}
+
+function settle(profit) {
+  const active = S.active;
+  if (!active) return;
+
+  const won = profit > 0;
+  S.pl += profit;
+
+  if (won) {
+    S.w++;
+    S.ls = 0;
+    S.lossesBySymbol.set(active.code, 0);
+    S.stake = Number($("base").value) || 1;
+    S.blocked.clear();
+  } else {
+    S.l++;
+    S.ls++;
+    const count = (S.lossesBySymbol.get(active.code) || 0) + 1;
+    S.lossesBySymbol.set(active.code, count);
+    S.stake = Math.min(Number($("max").value) || 400, active.stake * (Number($("mult").value) || 2));
+
+    const action = $("action").value;
+    if (action === "stop1") S.on = false;
+    if (action === "switch1" || (action === "switch2" && count >= 2)) S.blocked.add(active.code);
+  }
+
+  S.active = null;
+  S.busy = false;
+  refresh();
+
+  if (S.pl >= (Number($("tp").value) || Infinity)) S.on = false;
+  if (-S.pl >= (Number($("sl").value) || Infinity)) S.on = false;
+  if (S.ls >= (Number($("maxl").value) || Infinity)) S.on = false;
+  say(S.on ? "Running" : "Stopped by rule");
+  if (S.on) setTimeout(evaluate, 250);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function refresh() {
+  $("stake").textContent = money(S.stake);
+  $("wl").textContent = S.w + "/" + S.l;
+  $("ls").textContent = S.ls;
+  $("pl").textContent = money(S.pl);
+}
+
+$("connect").onclick = connect;
+$("start").onclick = () => {
+  if (!S.authorized) { say("Connect first"); return; }
+  resetRunStats();
+  S.on = true;
+  say("BOT ON");
+  evaluate();
+};
+$("stop").onclick = () => {
+  S.on = false;
+  say("BOT OFF");
+};
+
+setInterval(() => {
+  send({ping: 1});
+  if (S.active) send({proposal_open_contract: 1, contract_id: S.active.id});
+}, 12000);
+
+refresh();
+</script>
+</body>
+</html>
