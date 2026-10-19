@@ -1,0 +1,425 @@
+ <!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Matrix — EMA 9/15 Rise/Fall</title>
+<style>
+:root{color-scheme:dark;--bg:#080d12;--card:#111922;--card2:#0c131b;--line:#293647;--text:#eef3f8;--muted:#92a0b2;--g:#31c48d;--r:#ff6677;--a:#f0b64d;--b:#63b3ed}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:920px;margin:auto;padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;margin-bottom:14px}
+h1{font-size:25px;margin:0 0 6px}h2{font-size:18px;margin:0 0 12px}.note,label{color:var(--muted);font-size:12px;line-height:1.45}
+.row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+input,select{width:100%;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px}
+button{width:100%;padding:13px;border:0;border-radius:13px;margin-top:10px;font-weight:800;background:#238463;color:#04120d;font-size:15px}
+button.secondary{background:#263547;color:#e8eef5}button.danger{background:#5c2d39;color:#ffd8df}button.warn{background:#6b5223;color:#fff0c6}
+button{transition:background .12s,transform .08s,box-shadow .12s,filter .12s}
+button:active,button.tap-active{filter:brightness(1.45);transform:scale(.985);box-shadow:0 0 0 2px #eef3f855 inset}
+button.state-on{background:#31c48d!important;color:#04120d!important;box-shadow:0 0 0 2px #7ce0b855 inset}
+button.state-off{background:#5c2d39!important;color:#ffd8df!important}
+select:focus,input:focus{outline:2px solid #63b3ed;border-color:#63b3ed}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{padding:11px;border:1px solid var(--line);border-radius:13px;background:var(--card2)}
+.k{font-size:11px;color:var(--muted)}.v{font-size:19px;font-weight:850;margin-top:3px}.good{color:var(--g)}.bad{color:var(--r)}.amber{color:var(--a)}
+.mode{display:none}.mode.active{display:block}.pill{display:inline-flex;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;font-weight:800}
+.safeBox{padding:9px 11px;border:1px solid #256b55;border-radius:12px;background:#0c241d;color:#7ce0b8;font-weight:850;font-size:12px}
+.safeBox.unsafe{border-color:#7a4c2a;background:#2c1d0d;color:#ffc66c}
+canvas{width:100%;height:125px;background:#091018;border:1px solid var(--line);border-radius:13px;display:block}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:7px;border-bottom:1px solid #213040;text-align:left}th{color:var(--muted)}
+.switchline{display:flex;gap:8px;align-items:center}.switchline input{width:auto}
+@media(max-width:680px){.row,.row3{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.wrap{padding:9px}}
+</style>
+
+<style>
+:root{
+ --bg:#05080d;--card:rgba(15,24,34,.82);--card2:rgba(8,16,25,.88);
+ --line:rgba(112,144,170,.22);--text:#f4f8fb;--muted:#91a4b7;
+ --g:#2ee6a6;--r:#ff647c;--a:#ffc35c;--b:#66bfff;
+}
+html{background:#05080d}
+body{
+ min-height:100vh;
+ background:
+ radial-gradient(circle at 15% 0%,rgba(38,198,142,.14),transparent 34%),
+ radial-gradient(circle at 95% 10%,rgba(65,145,255,.13),transparent 32%),
+ linear-gradient(160deg,#05080d 0%,#07111a 48%,#05090f 100%);
+ background-attachment:fixed;
+}
+.wrap{max-width:960px;padding:16px}
+.card{
+ position:relative;overflow:hidden;
+ background:linear-gradient(145deg,rgba(17,28,39,.92),rgba(8,15,23,.88));
+ border:1px solid rgba(119,157,187,.22);
+ box-shadow:0 18px 45px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.025);
+ backdrop-filter:blur(12px);
+ border-radius:22px;padding:18px;margin-bottom:15px;
+}
+.card:before{
+ content:"";position:absolute;left:0;top:0;width:100%;height:1px;
+ background:linear-gradient(90deg,transparent,rgba(46,230,166,.55),transparent)
+}
+h1{font-size:27px;letter-spacing:-.5px;background:linear-gradient(90deg,#fff,#9ff7d8,#8bc7ff);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:18px;letter-spacing:.15px}
+.note,label{color:#9aabba}
+input,select{
+ border:1px solid rgba(115,151,180,.24);
+ background:rgba(4,11,18,.78);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+input:focus,select:focus{outline:none;border-color:#4fbca0;box-shadow:0 0 0 3px rgba(46,230,166,.10)}
+button{
+ border:1px solid rgba(255,255,255,.06);
+ background:linear-gradient(135deg,#22c88d,#3ee4ad);
+ color:#03110c;box-shadow:0 8px 24px rgba(46,230,166,.14);
+ letter-spacing:.2px
+}
+button.secondary{background:linear-gradient(135deg,#223548,#2e465e);color:#eef6fc}
+button.danger{background:linear-gradient(135deg,#572936,#753445);color:#ffe5ea}
+button.warn{background:linear-gradient(135deg,#d69a2e,#f5bd4d);color:#1b1202}
+button.state-on{background:linear-gradient(135deg,#1fcf91,#45efb6)!important;box-shadow:0 0 28px rgba(46,230,166,.24)}
+button.state-off{background:linear-gradient(135deg,#542633,#713244)!important}
+.stat{
+ background:linear-gradient(145deg,rgba(5,13,20,.92),rgba(12,22,31,.82));
+ border:1px solid rgba(112,144,170,.18);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.02)
+}
+.v{letter-spacing:-.25px}
+.pill{background:rgba(5,13,20,.72);border-color:rgba(102,191,255,.25)}
+.safeBox{
+ background:linear-gradient(135deg,rgba(15,82,61,.46),rgba(7,38,29,.72));
+ border-color:rgba(46,230,166,.42);color:#82f6ce;
+ box-shadow:0 0 24px rgba(46,230,166,.08)
+}
+.safeBox.unsafe{background:rgba(65,39,13,.55);border-color:rgba(255,195,92,.34)}
+canvas{background:linear-gradient(180deg,#07111a,#050b11);border-color:rgba(102,191,255,.18)}
+table{border-radius:14px;overflow:hidden}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.75px}
+td{background:rgba(5,12,19,.32)}
+#start{font-size:16px}
+@media(max-width:680px){
+ .wrap{padding:9px}.card{padding:15px;border-radius:18px}
+ h1{font-size:23px}.v{font-size:17px}
+}
+</style>
+<style id="matrix-thunder-theme">
+:root{--bg:#040713;--card:#0b1426;--card2:#080f20;--line:rgba(78,142,255,.34);--text:#eef6ff;--muted:#a1b5d4;--g:#4de6ff;--r:#ff436c;--a:#ffd169;--b:#409bff}
+html{background:#040713}body{background:radial-gradient(ellipse at 12% 4%,rgba(22,102,255,.30),transparent 36%),radial-gradient(ellipse at 92% 32%,rgba(255,37,87,.17),transparent 42%),linear-gradient(145deg,#030611,#0a1230 48%,#09050f)!important;background-attachment:fixed!important}
+.card{background:linear-gradient(140deg,rgba(12,24,51,.96),rgba(10,13,30,.94))!important;border:1px solid rgba(66,146,255,.36)!important;box-shadow:0 14px 40px rgba(0,0,0,.38),0 0 22px rgba(30,111,255,.09),inset 0 1px 0 rgba(129,186,255,.12)!important}
+.card:before{height:2px!important;background:linear-gradient(90deg,transparent,#2d7fff,#d6f5ff,#ff315f,transparent)!important;box-shadow:0 0 16px rgba(63,143,255,.6)}
+h1{font-weight:950!important;font-size:clamp(25px,6vw,37px)!important;background:linear-gradient(105deg,#fff,#8feaff 36%,#528aff 66%,#ff5279)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;text-shadow:none;letter-spacing:-.8px!important}
+h2{color:#d6eaff}h2:before{content:'\26a1';margin-right:8px;color:#54baff;text-shadow:0 0 12px #348eff}
+.note,label{color:#a4b8d8!important}input,select{background:#050d20!important;border:1px solid rgba(78,142,255,.37)!important;color:#f3f8ff!important}input:focus,select:focus{border-color:#62c8ff!important;box-shadow:0 0 0 3px rgba(48,125,255,.18)!important}
+button:not(.danger):not(.secondary):not(.warn){background:linear-gradient(110deg,#155be8,#28b7ff)!important;color:white!important;box-shadow:0 7px 24px rgba(32,112,255,.27)!important}button.danger{background:linear-gradient(110deg,#831b48,#ef3e62)!important;color:#fff!important}button.secondary{background:linear-gradient(110deg,#132e62,#244c88)!important}
+button.state-on{background:linear-gradient(100deg,#155bff,#3acfff)!important;color:white!important}button.state-off{background:linear-gradient(100deg,#8c204a,#e33962)!important}
+.stat{background:linear-gradient(135deg,#07142d,#0d1026)!important;border-color:rgba(77,133,255,.32)!important}.v{color:#e7f6ff}.good{color:#46edcf!important}.bad{color:#ff5b7e!important}.pill{border-color:#378cff!important;color:#b8d7ff!important}.safeBox{background:rgba(22,83,143,.24)!important;border-color:#2b8cff!important;color:#8ddcff!important}.safeBox.unsafe{border-color:#ff5b7e!important;color:#ff9aad!important}
+canvas{background:linear-gradient(180deg,#061a39,#09091c)!important;border-color:#377fff!important}td{background:rgba(8,19,42,.36)!important}th{color:#94caff!important}
+.matrix-mark{display:inline-flex;align-items:center;gap:7px;color:#9acfff;font:800 11px ui-monospace,monospace;letter-spacing:1.5px;margin:0 0 9px}.matrix-mark:before{content:'\03df';font-size:22px;color:#ff5079;text-shadow:0 0 13px #ff4060}
+</style>
+
+</head>
+<body><div class="wrap">
+<section class="card"><div class="matrix-mark">STORM SYSTEM // EMA-9/15</div><h1>Matrix</h1>
+<div class="note">⚡ THUNDER ENGINE · EMA 9 / EMA 15 CANDLE CROSSOVER → RISE / FALL · 99% SCORE GATE</div></section>
+
+<section class="card"><h2>1. Deriv connection</h2><div class="row3">
+<div><label>Deriv App ID</label><input id="appId" value="1089" placeholder="App ID"></div>
+<div><label>Deriv API Token</label><input id="pat" type="password" placeholder="Token with trade permission"></div>
+<div><label>Account</label><select id="accountMode"><option value="demo">DEMO</option><option value="real">REAL</option></select></div>
+</div><button id="connect">CONNECT</button><div style="margin-top:10px"><span id="pill" class="pill">Disconnected</span></div><div id="status" class="note" style="margin-top:8px">Loading JavaScript…</div></section>
+
+<section class="card"><h2>2. Bot option</h2><select id="mode"><option value="rf" selected>RISE / FALL — 5-MINUTE TREND</option></select></section>
+
+<section id="rf" class="card mode active"><h2>Rise / Fall — Current 5-Minute Candle Trend</h2>
+<div class="row3">
+<div><label>Contract duration — minutes (optional)</label><input id="rfDurationMin" type="number" min="1" max="59" step="1" value="" placeholder="Leave blank to use seconds"></div>
+<div><label>Contract duration — seconds (optional)</label><input id="rfDurationSec" type="number" min="1" max="86400" step="1" value="30" placeholder="30"></div>
+<div><label>Signal score required (50–99)</label><input id="rfConfirm" type="number" min="50" max="99" value="90"></div>
+<div><label>Loss action</label><select id="rfLossAction"><option value="stay" selected>Stay on this market until a win</option><option value="switch1">Switch market after 1 loss</option><option value="switch2">Switch market after 2 losses</option><option value="stop1">Stop on single loss</option><option value="cycle">Cycle / keep recovery</option></select></div>
+</div>
+<div class="row" style="margin-top:10px"><div><label>Stability filter</label><select id="stabilityFilter"><option value="off" selected>OFF — crossover only</option><option value="on">ON — candle must close beyond both EMAs</option></select></div><div><label>Cooldown after loss (seconds — disabled)</label><input id="lossCooldown" type="number" min="0" max="300" value="0"></div></div>
+<div class="row" style="margin-top:10px"><div><label>Fast EMA period</label><input id="emaFast" type="number" min="1" max="50" value="1"></div><div><label>Slow EMA period</label><input id="emaSlow" type="number" min="2" max="80" value="2"></div></div>
+<div class="note" style="margin-top:8px">Strategy: follow the current live 5-minute candle trend, using candle direction and EMA slope/position: bullish trend → RISE (CALL), bearish trend → FALL (PUT). No fresh crossover is required. The score is a 50–99 setup-strength meter, not a win probability. Score and reversal checks run synchronously on each incoming market update; no artificial analysis timer is used. Trade only at or above the required score (default 55).</div>
+<div class="note" style="margin-top:8px">Signals, score, and live price-action reversal checks are evaluated together on each incoming candle update. Recovery reassesses direction immediately after a loss; no artificial analysis wait or fresh-crossover wait is added. Market analysis uses live 5-minute candles. Contract duration uses minutes if filled; otherwise seconds (default 30).</div></section>
+
+<section class="card"><h2>3. Cycle / money management</h2><div class="row3">
+<div><label>Initial stake ($)</label><input id="baseStake" type="number" step=".01" value="1"></div>
+<div><label>Recovery multiplier</label><input id="mult" type="number" step=".01" value="2"></div>
+<div><label>Maximum stake ($)</label><input id="maxStake" type="number" step=".01" value="400"></div>
+<div><label>Session take profit ($)</label><input id="sessionTP" type="number" step=".01" value="20"></div>
+<div><label>Session stop loss ($)</label><input id="sessionSL" type="number" step=".01" value=""></div>
+<div><label>Maximum loss streak</label><input id="maxLoss" type="number" min="0" value="0"><div class="note">0 = no loss-streak stop; use session stop loss for a limit.</div></div>
+<div><label>Cycle mode</label><select id="cycleMode"><option value="single">SINGLE WIN — stop after first win</option><option value="continuous" selected>CYCLE — continue after wins</option></select></div>
+</div>
+<div class="note" style="margin-top:9px">LOSS → immediately reassess live candles and EMA slope, then request recovery on the same market in the assessed direction · WIN → stop bot. Maximum loss streak 0 = disabled.</div>
+<button id="start">START BOT</button><button id="stop" class="danger">STOP</button></section>
+
+<section class="card"><h2>4. Live cycle</h2><div class="grid">
+<div class="stat"><div class="k">Mode</div><div id="vMode" class="v">RF 9/15</div></div>
+<div class="stat"><div class="k">Market</div><div id="vMarket" class="v">—</div></div>
+<div class="stat"><div class="k">Signal</div><div id="vSignal" class="v">WAIT</div></div>
+<div class="stat"><div class="k">Stake</div><div id="vStake" class="v">$1.00</div></div>
+<div class="stat"><div class="k">Account Balance</div><div id="vBalance" class="v">—</div><div class="k" id="balanceLabel">Connect to view live balance</div></div>
+<div class="stat"><div class="k">Session P/L</div><div id="vPL" class="v">$0.00</div></div>
+<div class="stat"><div class="k">Wins / Losses</div><div id="vWL" class="v">0 / 0</div></div>
+<div class="stat"><div class="k">Loss streak</div><div id="vLS" class="v">0</div></div><div class="stat"><div class="k">Max loss streak reached</div><div id="vMaxLS" class="v">0</div></div>
+<div class="stat"><div class="k">Contract</div><div id="vContract" class="v">—</div></div><div class="stat"><div class="k">Trading</div><div id="vTrading" class="v">WAIT</div></div>
+</div><div style="margin-top:12px"><canvas id="chart" width="850" height="125"></canvas></div>
+<div class="note" style="margin-top:7px">Contract monitor only: graph locks to the actual traded market from OPEN → CLOSE and stays there until the next contract opens.</div></section>
+
+<section class="card"><h2>Scanner — live EMA crossover scores</h2><table><thead><tr><th>Market</th><th>Signal</th><th>Score</th><th>Status</th></tr></thead><tbody id="scan"></tbody></table></section>
+<section class="card"><h2>5. Trade history</h2>
+<div class="note" style="margin-bottom:9px">Completed contracts from this browser session.</div>
+<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Time</th><th>Market</th><th>Signal</th><th>Score</th><th>Stake</th><th>Result</th><th>P/L</th><th>Contract</th></tr></thead><tbody id="history"><tr><td colspan="9">No completed trades yet.</td></tr></tbody></table></div>
+<div class="row"><button id="downloadCsv" class="secondary">DOWNLOAD CSV</button><button id="clearHistory" class="danger">CLEAR HISTORY</button></div>
+</section>
+</div>
+
+<script>
+"use strict";
+const API="https://api.derivws.com", PUBLIC_WS="wss://api.derivws.com/trading/v1/options/ws/public";
+window.addEventListener("error",e=>{const s=document.getElementById("status");if(s)s.textContent="JS ERROR — "+(e.message||"Unknown error")+" @ line "+(e.lineno||"?")});
+window.addEventListener("unhandledrejection",e=>{const s=document.getElementById("status");if(s)s.textContent="PROMISE ERROR — "+(e.reason&&e.reason.message||e.reason||"Unknown error")});
+const $=id=>document.getElementById(id), money=n=>"$"+Number(n||0).toFixed(2);
+const POOLS=[/Bull Market Index/i,/Bear Market Index/i,/Volatility \d+/i];
+const GRANULARITY=300; // Analyze the live 5-minute candle trend
+
+const S={
+  ws:null,marketWs:null,tradeWs:null,connected:false,running:false,inTrade:false,req:10,treq:1000,currency:"USD",account:null,
+  symbols:new Map(),candles:new Map(),candidates:[],stake:1,pl:0,wins:0,losses:0,lossStreak:0,maxLossStreak:0,
+  active:null,pending:null,cooldownUntil:0,blocked:new Set(),marketLoss:new Map(),tradedSignals:new Map(),lockedMarket:null,lockedDirection:null,
+  graphCode:null,graphLabel:"Waiting for contract",openMark:null,closeMark:null,history:[],discovered:0,
+  lastTradeMessage:null,connectTimeout:null,connectAttempt:0,connectSession:0
+};
+
+function say(x){const s=$("status");if(s)s.textContent=x}
+function nextReq(){return ++S.req}
+function nextT(){return ++S.treq}
+function ws(){return S.tradeWs}
+function send(o){const w=S.tradeWs;if(w&&w.readyState===WebSocket.OPEN){w.send(JSON.stringify(o));return true}return false}
+function msend(o){const w=S.marketWs;if(w&&w.readyState===WebSocket.OPEN){w.send(JSON.stringify(o));return true}return false}
+
+/* ---------- connection: Deriv REST account + OTP, authenticated trading WS ---------- */
+function derivError(j,status){const e=Array.isArray(j?.errors)&&j.errors.length?j.errors[0]:null;return (e?.code||j?.error?.code||("HTTP_"+status))+": "+(e?.message||e?.detail?.message||j?.error?.message||j?.message||("HTTP "+status))}
+async function api(path,method="GET"){const pat=$("pat").value.trim(),app=$("appId").value.trim();if(!app)throw Error("APP_ID_MISSING: Enter your new Deriv API App ID.");if(!pat)throw Error("PAT_MISSING: Enter your Deriv Personal Access Token.");let r;try{r=await fetch(API+path,{method,mode:"cors",cache:"no-store",headers:{"Authorization":"Bearer "+pat,"Deriv-App-ID":app,"Accept":"application/json","Content-Type":"application/json"}})}catch(e){throw Error("NETWORK_OR_CORS: "+e.message)}let j={};try{j=await r.json()}catch{throw Error("HTTP_"+r.status+": Deriv returned a non-JSON response.")}if(!r.ok||j?.errors?.length)throw Error(derivError(j,r.status));return j}
+async function connectAll(){try{$("connect").disabled=true;S.connected=false;$("pill").textContent="Connecting…";say("Step 1/4 — opening Deriv public market WebSocket…");if(S.marketWs)try{S.marketWs.close()}catch{};if(S.tradeWs)try{S.tradeWs.close()}catch{};
+ await new Promise((res,rej)=>{S.marketWs=new WebSocket(PUBLIC_WS);let done=false,t=setTimeout(()=>{if(!done){done=true;rej(Error("PUBLIC_WS_TIMEOUT: public WebSocket did not open."))}},12000);S.marketWs.onopen=()=>{if(done)return;done=true;clearTimeout(t);S.marketWs.onmessage=onMarketSocket;const currentMarketWs=S.marketWs;S.marketWs.onclose=()=>{if(S.marketWs===currentMarketWs){S.connected=false;setRunning(false);$("pill").textContent="Disconnected"}};msend({active_symbols:"brief",req_id:nextReq()});res()};S.marketWs.onerror=()=>{if(!done){done=true;clearTimeout(t);rej(Error("PUBLIC_WS_ERROR: browser could not open Deriv public WebSocket."))}}});
+ say("Step 2/4 — validating App ID + PAT and reading Options accounts…");const a=await api("/trading/v1/options/accounts"),want=$("accountMode").value,list=Array.isArray(a?.data)?a.data:(a?.data?[a.data]:[]),matches=list.filter(x=>String(x.account_type||"").toLowerCase()===want&&String(x.status||"active").toLowerCase()==="active");if(!matches.length)throw Error("ACCOUNT_NOT_FOUND: No active "+want+" Options account returned.");S.account=matches.find(x=>String(x.currency||"").toUpperCase()==="USD")||matches[0];S.currency=S.account.currency||"USD";
+ say("Step 3/4 — requesting one-time authenticated WebSocket URL…");const o=await api("/trading/v1/options/accounts/"+encodeURIComponent(S.account.account_id)+"/otp","POST"),url=o?.data?.url||o?.data?.websocket_url||o?.data?.websocketUrl||o?.data?.ws_url;if(!url)throw Error("OTP_URL_MISSING: Deriv returned no WebSocket URL.");
+ say("Step 4/4 — opening authenticated "+want.toUpperCase()+" WebSocket…");await new Promise((res,rej)=>{S.tradeWs=new WebSocket(url);let done=false,t=setTimeout(()=>{if(!done){done=true;rej(Error("AUTH_WS_TIMEOUT: authenticated WebSocket did not open."))}},12000);S.tradeWs.onopen=()=>{if(done)return;done=true;clearTimeout(t);S.tradeWs.onmessage=onTradeSocket;res()};S.tradeWs.onerror=()=>{if(!done){done=true;clearTimeout(t);rej(Error("AUTH_WS_ERROR: authenticated WebSocket failed; reconnect for a fresh OTP."))}};S.tradeWs.onclose=()=>{setRunning(false);if(S.connected){S.connected=false;$("pill").textContent="Disconnected";say("Authenticated WebSocket closed. Press CONNECT for a fresh OTP.")}}});
+ S.connected=true;send({balance:1,subscribe:1,req_id:nextT()});$("balanceLabel").textContent=want.toUpperCase()+" · "+S.currency;$("pill").textContent="Connected "+want.toUpperCase();say("CONNECTED — "+want.toUpperCase()+". live EMA crossover market feed active.");
+ }catch(e){S.connected=false;$("pill").textContent="Connection failed";say("CONNECT FAILED — "+e.message)}finally{$("connect").disabled=false}}
+
+function onMarketSocket(ev){let d;try{d=JSON.parse(ev.data)}catch{return}onMarketData(d)}
+function onTradeSocket(ev){let d;try{d=JSON.parse(ev.data)}catch{return}onTradeData(d)}
+
+/* ---------- market data ---------- */
+function onMarketData(d){
+  if(d.error){say("MARKET API ERROR — "+(d.error.message||d.error.code||"Unknown error"));return}
+  if(d.msg_type==="active_symbols"){
+    S.symbols.clear();S.discovered=0;
+    for(const x of d.active_symbols||[]){
+      const code=x.underlying_symbol||x.symbol;
+      const name=x.underlying_symbol_name||x.display_name||code;
+      if(!code||!name)continue;
+      S.symbols.set(code,{code,name,pip_size:Number(x.pip_size||x.pip||0)});
+      if(POOLS.some(r=>r.test(name))){
+        S.discovered++;
+        msend({ticks_history:code,adjust_start_time:1,count:120,end:"latest",start:1,style:"candles",granularity:GRANULARITY,subscribe:1,req_id:nextReq()});
+      }
+    }
+    say("MARKETS LOADED — "+S.discovered+" rise/fall markets streaming live 5-minute candles");
+    evaluate();
+  }
+  if(d.msg_type==="candles"){
+    const code=d.echo_req&&d.echo_req.ticks_history;
+    if(code){
+      const arr=(d.candles||[]).map(c=>({open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),epoch:Number(c.epoch),open_time:Number(c.epoch)}));
+      S.candles.set(code,arr.slice(-150));
+      evaluate();
+    }
+  }
+  if(d.msg_type==="ohlc"){
+    const o=d.ohlc;if(!o)return;
+    const code=o.symbol;
+    const c={open:Number(o.open),high:Number(o.high),low:Number(o.low),close:Number(o.close),epoch:Number(o.epoch),open_time:Number(o.open_time)};
+    let arr=S.candles.get(code)||[];
+    const last=arr[arr.length-1];
+    if(last&&last.open_time===c.open_time){arr[arr.length-1]=c}
+    else{arr.push(c);if(arr.length>600)arr=arr.slice(-600)}
+    S.candles.set(code,arr);
+    if(S.graphCode===code)drawGraph();
+    evaluate();
+  }
+}
+
+/* ---------- indicators ---------- */
+function ema(values,period){
+  const k=2/(period+1),out=new Array(values.length);let e=values[0];
+  for(let i=0;i<values.length;i++){e=(i===0)?values[0]:values[i]*k+e*(1-k);out[i]=e}
+  return out;
+}
+function atr(candles,period=14){
+  if(candles.length<period+1)return 0;
+  const tr=[];
+  for(let i=1;i<candles.length;i++)tr.push(Math.max(candles[i].high-candles[i].low,Math.abs(candles[i].high-candles[i-1].close),Math.abs(candles[i].low-candles[i-1].close)));
+  return tr.slice(-period).reduce((a,b)=>a+b,0)/period;
+}
+// Fast, non-blocking recovery assessment: use the latest live candles, EMA slope,
+// candle-body direction, and rejection wick. This does not wait for a new crossover.
+function assessRecoveryDirection(code,original){
+  const candles=S.candles.get(code)||[];
+  if(candles.length<4)return original;
+  const closes=candles.map(c=>c.close);
+  const fast=Math.max(1,Number($("emaFast").value)||1),slow=Math.max(fast+1,Number($("emaSlow").value)||2);
+  const ef=ema(closes,fast),es=ema(closes,slow),n=candles.length-1;
+  const c=candles[n],prev=candles[n-1],prev2=candles[n-2];
+  const range=Math.max(c.high-c.low,Math.abs(c.close)*1e-8);
+  const body=Math.abs(c.close-c.open),upper=c.high-Math.max(c.open,c.close),lower=Math.min(c.open,c.close)-c.low;
+  const red=c.close<c.open,green=c.close>c.open;
+  const priorUp=prev.close>prev.open&&prev2.close>prev2.open;
+  const priorDown=prev.close<prev.open&&prev2.close<prev2.open;
+  const bearEngulf=red&&c.open>=prev.close&&c.close<=prev.open;
+  const bullEngulf=green&&c.open<=prev.close&&c.close>=prev.open;
+  const bearReject=upper>=Math.max(body*1.4,range*.32)&&c.close<(c.high+c.low)/2;
+  const bullReject=lower>=Math.max(body*1.4,range*.32)&&c.close>(c.high+c.low)/2;
+  const emaDown=ef[n]<ef[n-1]&&es[n]<=es[n-1]&&c.close<ef[n];
+  const emaUp=ef[n]>ef[n-1]&&es[n]>=es[n-1]&&c.close>ef[n];
+  const bearish=(bearEngulf||bearReject|| (red&&priorUp&&c.close<prev.open))&&emaDown;
+  const bullish=(bullEngulf||bullReject|| (green&&priorDown&&c.close>prev.open))&&emaUp;
+  if(original==="RISE"&&bearish)return "FALL";
+  if(original==="FALL"&&bullish)return "RISE";
+  return original;
+}
+function emaSignal(all,code,allowContinuation=false){
+  if(S.blocked.has(code)||all.length<25)return null;
+  const candles=all,fast=Math.max(1,Number($("emaFast").value)||1),slow=Math.max(fast+1,Number($("emaSlow").value)||2);
+  if(candles.length<slow+3)return null;
+  const closes=candles.map(c=>c.close),ef=ema(closes,fast),es=ema(closes,slow),i=closes.length-1,p=i-1;
+  const last=candles[i],prev=candles[p];
+  const above=last.close>ef[i]&&last.close>es[i],below=last.close<ef[i]&&last.close<es[i];
+  const fastUp=ef[i]>ef[p],fastDown=ef[i]<ef[p];
+  // Follow the live 5-minute candle trend; do not require a fresh crossover.
+  let sig=(last.close>last.open&&above&&fastUp)?"RISE":(last.close<last.open&&below&&fastDown)?"FALL":null;
+  if(allowContinuation){
+    // During recovery, reassess live price action and allow confirmed reversal to change direction.
+    sig=assessRecoveryDirection(code,S.lockedDirection||sig||"RISE");
+    if(sig==="RISE"&&!(above||last.close>last.open))sig=null;
+    if(sig==="FALL"&&!(below||last.close<last.open))sig=null;
+  }
+  if(!sig)return null;
+  const range=atr(candles,14)||Math.abs(last.high-last.low)||Math.abs(last.close)*1e-6;
+  const closeConfirmed=sig==="RISE"?above:below;
+  const separation=Math.abs(ef[i]-es[i])/range,body=Math.abs(last.close-last.open)/range;
+  const score=Math.min(99,Math.max(50,Math.round(70+separation*55+Math.min(1,body)*20+(closeConfirmed?9:0))));
+  const stable=$("stabilityFilter").value!=="on"||closeConfirmed;
+  const threshold=Math.max(50,Math.min(99,Number($("rfConfirm").value)||99));
+  return{sig,score,stable,safe:stable&&score>=threshold,signalKey:sig+":"+last.open_time,continuation:!rise&&!fall};
+}
+function evaluate(){
+  // Keep score and direction analysis synchronous with the newest market update; never schedule a separate analysis delay.
+  const candidates=[];
+  const locked=S.lockedMarket;
+  for(const [code,meta] of S.symbols){
+    if(!POOLS.some(r=>r.test(meta.name)))continue;
+    if(locked&&code!==locked)continue;
+    const signal=emaSignal(S.candles.get(code)||[],code,Boolean(locked&&code===locked));
+    if(signal)candidates.push({code,name:meta.name,...signal});
+  }
+  candidates.sort((a,b)=>Number(b.safe)-Number(a.safe)||b.score-a.score);S.candidates=candidates;renderScan();
+  const best=candidates.find(x=>x.safe&&(x.continuation||S.tradedSignals.get(x.code)!==x.signalKey));
+  if(best){$("vMarket").textContent=best.name.replace(" Index","");$("vSignal").textContent=best.sig}
+  if(S.running&&!S.inTrade&&!S.pending&&best)place(best);
+}
+function renderScan(){
+  $("scan").innerHTML=S.candidates.slice(0,10).map(x=>`<tr><td>${x.name}</td><td>${x.sig}</td><td>${x.score}</td><td class="${x.safe?"good":"amber"}">${x.safe?"QUALIFIED":x.stable?"BELOW GATE":"UNSTABLE"}</td></tr>`).join("")||'<tr><td colspan="4">Waiting for live EMA / price-action signal or locked-market recovery…</td></tr>';
+}
+
+/* ---------- trading ---------- */
+function place(c){
+  if(!S.connected||ws()?.readyState!==WebSocket.OPEN)return setRunning(false),say("Trade connection unavailable. Reconnect first.");
+  const minutes=$("rfDurationMin").value.trim(),seconds=$("rfDurationSec").value.trim();
+  const useMinutes=minutes!=="";
+  const duration=useMinutes?Math.max(1,Math.min(59,Number(minutes)||1)):Math.max(1,Math.min(86400,Number(seconds)||30));
+  const durationUnit=useMinutes?"m":"s";
+  const req={proposal:1,amount:S.stake,basis:"stake",contract_type:c.sig==="RISE"?"CALL":"PUT",currency:S.currency,underlying_symbol:c.code,duration,duration_unit:durationUnit,req_id:nextT()};
+  if(!S.lockedMarket){S.lockedMarket=c.code;S.lockedDirection=c.sig;}
+  S.inTrade=true;S.pending={kind:"proposal",candidate:c,req,startedAt:Date.now()};
+  if(!send(req)){S.pending=null;S.inTrade=false;setRunning(false);return say("Proposal could not be sent. Reconnect first.")}
+  say((c.continuation?"Trend continuation ":"EMA crossover ")+c.sig+" confirmed on "+c.name+" — requesting proposal…");
+}
+function onTradeData(d){
+  S.lastTradeMessage={type:String(d.msg_type||"unknown"),id:d.req_id||null,error:d.error&&d.error.code||null,at:Date.now()};
+  if(d.error){
+    if(d.echo_req&&d.echo_req.balance){$("balanceLabel").textContent="Balance unavailable";return}
+    if(d.echo_req&&d.echo_req.authorize){clearTimeout(S.connectTimeout);$("connect").disabled=false;$("pill").textContent="Token rejected";say("TOKEN REJECTED — "+(d.error.message||d.error.code));return}
+    say("Deriv error ["+(d.error.code||"unknown")+"]: "+(d.error.message||"No details"));S.pending=null;S.inTrade=false;setRunning(false);return;
+  }
+  if(d.msg_type==="balance"&&d.balance){const n=Number(d.balance.balance);if(Number.isFinite(n))$("vBalance").textContent=new Intl.NumberFormat("en-US",{style:"currency",currency:S.currency}).format(n);return}
+  if(d.msg_type==="proposal"&&S.pending&&S.pending.kind==="proposal"){
+    const p=d.proposal;if(!p||!p.id){S.pending=null;S.inTrade=false;return say("Deriv returned no proposal.")}
+    S.pending.kind="buy";S.pending.startedAt=Date.now();S.pending.buyReq=nextT();
+    if(!send({buy:p.id,price:Number((Number(p.ask_price||S.stake)*1.02).toFixed(2)),req_id:S.pending.buyReq})){S.pending=null;S.inTrade=false;setRunning(false)}return;
+  }
+  if(d.msg_type==="buy"&&S.pending&&S.pending.kind==="buy"){
+    const id=d.buy&&d.buy.contract_id;if(!id){S.pending=null;S.inTrade=false;return say("Purchase was not confirmed.")}
+    const c=S.pending.candidate,arr=S.candles.get(c.code)||[],entry=arr.length?arr[arr.length-1].close:null;
+    S.tradedSignals.set(c.code,c.signalKey);S.active={id,code:c.code,name:c.name,signal:c.sig,score:c.score,stake:S.stake,duration:S.pending.req.duration,durationUnit:S.pending.req.duration_unit,entryTime:new Date().toISOString(),entryPrice:entry};
+    S.graphCode=c.code;S.graphLabel=c.name.replace(" Index","")+" · "+c.sig+" · "+S.active.duration+" "+(S.active.durationUnit==="s"?"SEC":"MIN");S.openMark=entry;S.closeMark=null;
+    $("vTrading").textContent=c.sig+" · "+S.active.duration+" "+(S.active.durationUnit==="s"?"SEC":"MIN")+" · "+money(S.stake);$("vContract").textContent=String(id);S.pending=null;drawGraph();
+    send({proposal_open_contract:1,contract_id:id,subscribe:1,req_id:nextT()});say("Contract OPEN — "+c.name);return;
+  }
+  if(d.msg_type==="proposal_open_contract"&&S.active&&String(d.proposal_open_contract&&d.proposal_open_contract.contract_id)===String(S.active.id)){
+    const c=d.proposal_open_contract;if(c.is_sold||["won","lost","sold"].includes(String(c.status||"").toLowerCase()))settle(Number(c.profit||0),c);
+  }
+}
+function settle(profit,contract){
+  const a=S.active;if(!a)return;const win=profit>0;S.pl+=profit;S.closeMark=Number(contract.exit_spot??contract.current_spot??a.entryPrice);
+  if(win){S.wins++;S.lossStreak=0;S.stake=Number($("baseStake").value)||1;S.blocked.clear();S.marketLoss.clear();S.cooldownUntil=0;S.lockedMarket=a.code;S.lockedDirection=a.signal}
+  else{
+    S.losses++;S.lossStreak++;S.maxLossStreak=Math.max(S.maxLossStreak,S.lossStreak);
+    const count=(S.marketLoss.get(a.code)||0)+1;S.marketLoss.set(a.code,count);
+    // No post-loss cooldown; assess live candle reversal immediately, then submit the next recovery proposal without waiting for a fresh crossover.
+    S.lockedMarket=a.code;S.lockedDirection=a.signal;S.blocked.delete(a.code);S.cooldownUntil=0;
+    S.stake=Math.min(Number($("maxStake").value)||400,a.stake*(Number($("mult").value)||2));
+  }
+  S.history.push({time:new Date().toLocaleString(),market:a.name,signal:a.signal,score:a.score,stake:a.stake,result:win?"WIN":"LOSS",profit,contract:a.id});
+  S.active=null;S.inTrade=false;$("vContract").textContent="—";renderHistory();refresh();drawGraph();
+  say((win?"WIN ":"LOSS ")+money(profit)+(win?" — stake reset":" — recovery stake "+money(S.stake)));
+  if(win)setRunning(false);
+  const slText=$("sessionSL").value.trim();
+  const maxLossLimit=Number($("maxLoss").value)||0;
+  const stopForLimit=S.pl>=Number($("sessionTP").value)||(slText!==""&&-S.pl>=Number(slText))||(maxLossLimit>0&&S.lossStreak>=maxLossLimit);
+  if(stopForLimit)setRunning(false);
+  // Fire the recovery proposal immediately after a loss; do not wait for the next market tick or a fresh EMA scan.
+  if(!win&&!stopForLimit&&S.running&&S.connected){
+    // Use the newest candle snapshot immediately; no timeout/cooldown between loss settlement and direction assessment.
+    const direction=assessRecoveryDirection(a.code,a.signal);
+    S.lockedDirection=direction;
+    const recovery={code:a.code,name:a.name,sig:direction,score:75,safe:true,stable:true,signalKey:direction+":recovery:"+Date.now(),continuation:true};
+    say("LOSS confirmed — immediate recovery assessment: "+direction+"; requesting next proposal now…");
+    place(recovery);
+  }
+}
+
+/* ---------- display ---------- */
+function setRunning(value){S.running=Boolean(value);$("start").textContent=S.running?"BOT RUNNING":"START BOT";$("start").classList.toggle("state-on",S.running);$("stop").classList.toggle("state-off",!S.running);if(!S.active)$("vTrading").textContent=S.running?"SCANNING":"STOPPED"}
+function refresh(){$("vStake").textContent=money(S.stake);$("vPL").textContent=money(S.pl);$("vWL").textContent=S.wins+" / "+S.losses;$("vLS").textContent=S.lossStreak;$("vMaxLS").textContent=S.maxLossStreak}
+function renderHistory(){
+  $("history").innerHTML=S.history.length?[...S.history].reverse().map((h,i)=>`<tr><td>${S.history.length-i}</td><td>${h.time}</td><td>${h.market}</td><td>${h.signal}</td><td>${h.score}</td><td>${money(h.stake)}</td><td class="${h.profit>0?"good":"bad"}">${h.result}</td><td>${money(h.profit)}</td><td>${h.contract}</td></tr>`).join(""):'<tr><td colspan="9">No completed trades yet.</td></tr>';
+}
+function csvCell(v){return '"'+String(v??"").replaceAll('"','""')+'"'}
+function downloadHistory(){const cols=["No","Time","Market","Signal","Score","Stake","Result","Profit","Contract ID"],rows=S.history.map((h,i)=>[i+1,h.time,h.market,h.signal,h.score,h.stake,h.result,h.profit,h.contract]),csv=[cols,...rows].map(r=>r.map(csvCell).join(",")).join("\r\n"),blob=new Blob([csv],{type:"text/csv"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="matrix-ema-history.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function drawGraph(){
+  const cv=$("chart"),ctx=cv.getContext("2d"),arr=(S.candles.get(S.graphCode)||[]).slice(-45);ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle="#eef6ff";ctx.font="bold 13px system-ui";ctx.fillText(S.graphLabel,12,18);if(arr.length<2)return;
+  let lo=Math.min(...arr.map(c=>c.low)),hi=Math.max(...arr.map(c=>c.high)),span=hi-lo||1;const x=i=>10+i/(arr.length-1)*(cv.width-20),y=v=>cv.height-9-(v-lo)/span*(cv.height-38);
+  ctx.strokeStyle="#409bff";ctx.lineWidth=2;ctx.beginPath();arr.forEach((c,i)=>i?ctx.lineTo(x(i),y(c.close)):ctx.moveTo(x(i),y(c.close)));ctx.stroke();
+  const mark=(v,label,color)=>{if(!Number.isFinite(v))return;ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(8,y(v));ctx.lineTo(cv.width-8,y(v));ctx.stroke();ctx.fillStyle=color;ctx.fillText(label,12,Math.max(32,y(v)-4))};mark(S.openMark,"OPEN","#2ee6a6");mark(S.closeMark,"CLOSE","#ff647c");
+}
+
+$("connect").onclick=connectAll;
+$("start").onclick=()=>{if(!S.connected)return say("Connect first.");if(S.active||S.inTrade||S.pending)return say("Wait for the current contract or request.");S.stake=Number($("baseStake").value)||1;S.cooldownUntil=0;S.blocked.clear();S.marketLoss.clear();S.lockedMarket=null;S.lockedDirection=null;setRunning(true);refresh();evaluate();say("BOT ON — detects the live crossover; stays on that market and direction, reassessing live candle reversal immediately after each loss and recovering without waiting for a fresh crossover; stops after a win.")};
+$("stop").onclick=()=>{setRunning(false);say("Bot OFF. Any open contract remains monitored.")};
+$("downloadCsv").onclick=downloadHistory;$("clearHistory").onclick=()=>{S.history=[];renderHistory();say("Trade history cleared.")};
+setInterval(()=>{if(S.marketWs?.readyState===WebSocket.OPEN)msend({ping:1,req_id:nextReq()});if(ws()?.readyState===WebSocket.OPEN)send({ping:1,req_id:nextT()});if(S.active)send({proposal_open_contract:1,contract_id:S.active.id,req_id:nextT()});if(S.pending&&Date.now()-S.pending.startedAt>20000){setRunning(false);if(S.pending.kind==="proposal"){S.pending=null;S.inTrade=false;say("PROPOSAL TIMEOUT — stopped; reconnect before retrying.")}else{say("BUY RESPONSE DELAYED — stopped. Check Deriv open contracts before reconnecting.");S.pending.startedAt=Date.now()}}},12000);
+document.querySelectorAll("button").forEach(b=>{b.addEventListener("pointerdown",()=>b.classList.add("tap-active"));["pointerup","pointercancel","pointerleave"].forEach(e=>b.addEventListener(e,()=>b.classList.remove("tap-active")))});
+S.stake=Number($("baseStake").value)||1;refresh();renderHistory();renderScan();drawGraph();setRunning(false);say("Matrix ready. Connect to Deriv.");
+</script></body></html>
